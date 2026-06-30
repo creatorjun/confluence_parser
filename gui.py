@@ -172,7 +172,7 @@ QPushButton:disabled {{
     color: #fff;
 }}
 
-/* Secondary 버튼 (기본 상태) */
+/* Secondary 버튼 */
 QPushButton#btn_secondary {{
     background: {_SURFACE};
     color: {_TEXT};
@@ -376,6 +376,21 @@ def _label(text: str, obj_name: str = "", color: str = "") -> QLabel:
     return lbl
 
 
+def _btn(text: str, obj_name: str = "", height: int = 36,
+         min_width: int = 0) -> QPushButton:
+    """텍스트 잘림 없는 버튼 헬퍼.
+    - setFixedSize 대신 setFixedHeight + setMinimumWidth 사용
+    - QSS padding 이 나머지 너비를 자동 확장
+    """
+    btn = QPushButton(text)
+    if obj_name:
+        btn.setObjectName(obj_name)
+    btn.setFixedHeight(height)
+    if min_width:
+        btn.setMinimumWidth(min_width)
+    return btn
+
+
 # ─────────────────────────────────────────────
 # 설정 다이얼로그
 # ─────────────────────────────────────────────
@@ -439,12 +454,9 @@ class SettingsDialog(QDialog):
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        btn_cancel = QPushButton("취소")
-        btn_cancel.setObjectName("btn_secondary")
-        btn_cancel.setFixedWidth(90)
+        btn_cancel = _btn("취소", "btn_secondary", height=36, min_width=88)
         btn_cancel.clicked.connect(self.reject)
-        btn_save = QPushButton("저장")
-        btn_save.setFixedWidth(90)
+        btn_save = _btn("저장", height=36, min_width=88)
         btn_save.clicked.connect(self._save)
         btn_row.addWidget(btn_cancel)
         btn_row.addWidget(btn_save)
@@ -507,13 +519,10 @@ class MainWindow(QMainWindow):
         logo_row.addWidget(lbl_logo1)
         logo_row.addWidget(lbl_logo2)
         hdr_layout.addLayout(logo_row)
-
         hdr_layout.addStretch()
 
-        # 설정 버튼 (인스턴스 변수로 저장 — _check_credentials 에서 상태 변경)
-        self.btn_settings = QPushButton("⚙  설정")
-        self.btn_settings.setObjectName("btn_secondary")
-        self.btn_settings.setFixedSize(100, 36)
+        # 설정 버튼 — 너비를 텍스트에 맞게 자동 확장
+        self.btn_settings = _btn("⚙  설정", "btn_secondary", height=36, min_width=90)
         self.btn_settings.clicked.connect(self._open_settings)
         hdr_layout.addWidget(self.btn_settings)
 
@@ -533,7 +542,6 @@ class MainWindow(QMainWindow):
         grid.setContentsMargins(14, 20, 14, 14)
         grid.setColumnStretch(1, 1)
 
-        # URL 행
         lbl_url = _label("Confluence 페이지 URL", color=_TEXT_SEC)
         lbl_url.setStyleSheet(f"font-size:11px; font-weight:600; color:{_TEXT_SEC};"
                                "text-transform:uppercase; background:transparent;")
@@ -546,7 +554,6 @@ class MainWindow(QMainWindow):
         self.le_url.setFixedHeight(40)
         grid.addWidget(self.le_url, 1, 0, 1, 5)
 
-        # 옵션 행
         lbl_fmt = _label("출력 형식", color=_TEXT_SEC)
         lbl_fmt.setStyleSheet(f"font-size:11px; font-weight:600; color:{_TEXT_SEC};"
                                "text-transform:uppercase; background:transparent;")
@@ -572,7 +579,6 @@ class MainWindow(QMainWindow):
             2, 3,
         )
 
-        # 저장 경로 행
         lbl_out = _label("저장 경로", color=_TEXT_SEC)
         lbl_out.setStyleSheet(f"font-size:11px; font-weight:600; color:{_TEXT_SEC};"
                                "text-transform:uppercase; background:transparent;")
@@ -582,9 +588,8 @@ class MainWindow(QMainWindow):
         self.le_out.setFixedHeight(40)
         grid.addWidget(self.le_out, 3, 1, 1, 3)
 
-        btn_browse = QPushButton("📂  찾기")
-        btn_browse.setObjectName("btn_secondary")
-        btn_browse.setFixedSize(90, 40)
+        # ✅ 찾기 버튼: setFixedSize 제거 → 하이 + minWidth
+        btn_browse = _btn("📂  찾기", "btn_secondary", height=40, min_width=88)
         btn_browse.clicked.connect(self._browse)
         grid.addWidget(btn_browse, 3, 4)
 
@@ -596,14 +601,11 @@ class MainWindow(QMainWindow):
         btn_row.setSpacing(10)
         btn_row.addStretch()
 
-        self.btn_run = QPushButton("▶  변환 시작")
-        self.btn_run.setFixedSize(160, 44)
+        self.btn_run = _btn("▶  변환 시작", height=44, min_width=148)
         self.btn_run.clicked.connect(self._start)
         btn_row.addWidget(self.btn_run)
 
-        self.btn_stop = QPushButton("⏹  중단")
-        self.btn_stop.setObjectName("btn_danger")
-        self.btn_stop.setFixedSize(110, 44)
+        self.btn_stop = _btn("⏹  중단", "btn_danger", height=44, min_width=100)
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self._stop)
         btn_row.addWidget(self.btn_stop)
@@ -647,9 +649,8 @@ class MainWindow(QMainWindow):
 
         log_foot = QHBoxLayout()
         log_foot.addStretch()
-        btn_clear = QPushButton("로그 지우기")
-        btn_clear.setObjectName("btn_secondary")
-        btn_clear.setFixedSize(110, 32)
+        # ✅ 로그 지우기 버튼: setFixedSize 제거 → 하이 + minWidth
+        btn_clear = _btn("로그 지우기", "btn_secondary", height=34, min_width=100)
         btn_clear.clicked.connect(self.te_log.clear)
         log_foot.addWidget(btn_clear)
         log_layout.addLayout(log_foot)
@@ -670,7 +671,6 @@ class MainWindow(QMainWindow):
         else:
             self.btn_settings.setText("❗ 설정 필요")
             self.btn_settings.setObjectName("btn_settings_warn")
-        # objectName 변경 후 QSS 재적용
         self.btn_settings.setStyle(self.btn_settings.style())
 
     def _open_settings(self):
