@@ -1,6 +1,7 @@
 requests
 beautifulsoup4
-markdownify
 python-docx
 openpyxl
 pdfkit
+python-dotenv
+PyQt6
