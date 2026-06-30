@@ -69,7 +69,7 @@ class MainWindow(QMainWindow):
     def _make_header(self) -> QWidget:
         panel = QWidget()
         panel.setObjectName("header_panel")
-        panel.setFixedHeight(64)
+        panel.setFixedHeight(69)
         panel.setStyleSheet(
             f"background:{HDR_BG}; border-bottom:1px solid {BORDER};"
         )
@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(logo_row)
         layout.addStretch()
 
-        self.btn_settings = make_btn("⚙  설정", "btn_secondary", height=30, min_width=76)
+        self.btn_settings = make_btn("⚙  설정", "btn_secondary", height=36, min_width=90)
         self.btn_settings.clicked.connect(self._open_settings)
         layout.addWidget(self.btn_settings)
         return panel
@@ -200,7 +200,7 @@ class MainWindow(QMainWindow):
 
         return grp
 
-    # ── 유틸 ───────────────────────────────────────
+    # ── 유틸 ─────────────────────────────────────
     def _cap_label(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setStyleSheet(
@@ -209,7 +209,7 @@ class MainWindow(QMainWindow):
         )
         return lbl
 
-    # ── View 이벤트 → ViewModel 커맨드 ────────────────
+    # ── View 이벤트 → ViewModel 커맨드 ──────────────
     def _open_settings(self) -> None:
         dlg = SettingsDialog(self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
@@ -255,7 +255,7 @@ class MainWindow(QMainWindow):
             output_path=self.le_out.text().strip(),
         )
 
-    # ── ViewModel 시그널 핸들러 ─────────────────────
+    # ── ViewModel 시그널 핸들러 ───────────────────
     def _append_log(self, msg: str) -> None:
         self.te_log.append(msg)
         sb = self.te_log.verticalScrollBar()
