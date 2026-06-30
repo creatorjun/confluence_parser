@@ -69,7 +69,7 @@ class MainWindow(QMainWindow):
     def _make_header(self) -> QWidget:
         panel = QWidget()
         panel.setObjectName("header_panel")
-        panel.setFixedHeight(69)
+        panel.setFixedHeight(80)
         panel.setStyleSheet(
             f"background:{HDR_BG}; border-bottom:1px solid {BORDER};"
         )
