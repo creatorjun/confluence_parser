@@ -74,7 +74,8 @@ class MainWindow(QMainWindow):
             f"background:{HDR_BG}; border-bottom:1px solid {BORDER};"
         )
         layout = QHBoxLayout(panel)
-        layout.setContentsMargins(24, 0, 20, 0)
+        # 상하 12px 마진: 버튼 하단 보더가 패널에 밀려 클리핑되지 않도록
+        layout.setContentsMargins(24, 12, 20, 12)
         layout.setSpacing(6)
 
         logo_row = QHBoxLayout()
