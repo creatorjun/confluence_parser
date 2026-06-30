@@ -46,7 +46,7 @@ QGroupBox::title {{
     subcontrol-position: top left;
     left: 14px;
     padding: 0 6px;
-    background: transparent;
+    background: {BG};
     color: {TEXT_SEC};
     font-size: 11px;
     font-weight: 600;
