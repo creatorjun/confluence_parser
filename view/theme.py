@@ -32,7 +32,7 @@ QWidget#header_panel {{
     border-bottom: 1px solid {BORDER};
 }}
 QGroupBox {{
-    background: {SURFACE};
+    background: transparent;
     border: 1px solid {BORDER};
     border-radius: 10px;
     margin-top: 10px;
@@ -46,7 +46,7 @@ QGroupBox::title {{
     subcontrol-position: top left;
     left: 14px;
     padding: 0 6px;
-    background: {SURFACE};
+    background: transparent;
     color: {TEXT_SEC};
     font-size: 11px;
     font-weight: 600;
@@ -140,8 +140,8 @@ QPushButton#btn_settings_warn {{
     border: 1.5px solid {ERROR};
     font-weight: 700;
     border-radius: 7px;
-    padding: 9px 20px;
-    font-size: 13px;
+    padding: 6px 14px;
+    font-size: 12px;
 }}
 QPushButton#btn_settings_warn:hover {{
     background: #FEE2E2;
@@ -200,6 +200,9 @@ QStatusBar {{
     color: {TEXT_SEC};
     font-size: 12px;
     padding: 2px 8px;
+}}
+QStatusBar QLabel {{
+    background: transparent;
 }}
 QLabel#lbl_title {{
     font-size: 20px; font-weight: 700; color: {TEXT};

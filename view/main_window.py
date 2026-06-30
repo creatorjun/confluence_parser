@@ -1,9 +1,4 @@
-"""View — 메인 윈도우.
-
-바인딩 원칙:
-  View  는 ViewModel 의 시그널을 구독하고 커맨드를 호출한다.
-  View  는 worker / config / client 를 직접 알지 못한다.
-"""
+"""View — 메인 윈도우."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -35,10 +30,9 @@ class MainWindow(QMainWindow):
         self._vm = MainViewModel(self)
         self._bind_viewmodel()
         self._build_ui()
-        # 초기 상태 반영
         self._refresh_credentials(self._vm.has_credentials)
 
-    # ── ViewModel 바인딩 ────────────────────────────────
+    # ── ViewModel 바인딩 ───────────────────────────────
     def _bind_viewmodel(self) -> None:
         vm = self._vm
         vm.log_appended.connect(self._append_log)
@@ -48,7 +42,7 @@ class MainWindow(QMainWindow):
         vm.convert_error.connect(self._on_error)
         vm.credentials_changed.connect(self._refresh_credentials)
 
-    # ── UI 구성 ─────────────────────────────────────────
+    # ── UI 구성 ───────────────────────────────────────
     def _build_ui(self) -> None:
         root = QWidget()
         self.setCentralWidget(root)
@@ -68,7 +62,9 @@ class MainWindow(QMainWindow):
         cl.addWidget(self._make_log_group())
         root_layout.addWidget(content)
 
+        # ✅ 상태바 텍스트 배경 제거
         self.lbl_status = QLabel("대기 중…")
+        self.lbl_status.setStyleSheet("background: transparent;")
         self.statusBar().addWidget(self.lbl_status)
 
     def _make_header(self) -> QWidget:
@@ -93,13 +89,16 @@ class MainWindow(QMainWindow):
         layout.addLayout(logo_row)
         layout.addStretch()
 
-        self.btn_settings = make_btn("⚙  설정", "btn_secondary", height=36, min_width=90)
+        # ✅ 설정 버튼: height 36 → 30, min_width 90 → 76
+        self.btn_settings = make_btn("⚙  설정", "btn_secondary", height=30, min_width=76)
         self.btn_settings.clicked.connect(self._open_settings)
         layout.addWidget(self.btn_settings)
         return panel
 
     def _make_input_group(self) -> QGroupBox:
+        # ✅ QGroupBox 자체에 background:transparent 적용
         grp = QGroupBox("변환 설정")
+        grp.setStyleSheet("QGroupBox { background: transparent; }")
         grid = QGridLayout(grp)
         grid.setSpacing(10)
         grid.setContentsMargins(14, 20, 14, 14)
@@ -191,7 +190,9 @@ class MainWindow(QMainWindow):
         return wrapper
 
     def _make_log_group(self) -> QGroupBox:
+        # ✅ QGroupBox 자체에 background:transparent 적용
         grp = QGroupBox("진행 로그")
+        grp.setStyleSheet("QGroupBox { background: transparent; }")
         layout = QVBoxLayout(grp)
         layout.setContentsMargins(12, 16, 12, 12)
         layout.setSpacing(8)
@@ -206,11 +207,13 @@ class MainWindow(QMainWindow):
         btn_clear = make_btn("로그 지우기", "btn_secondary", height=34, min_width=100)
         btn_clear.clicked.connect(self.te_log.clear)
         foot.addWidget(btn_clear)
+        # ✅ 로그 지우기 버튼 우측 여백
+        foot.addSpacing(4)
         layout.addLayout(foot)
 
         return grp
 
-    # ── 유틸 ────────────────────────────────────────────
+    # ── 유틸 ──────────────────────────────────────────
     def _cap_label(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setStyleSheet(
@@ -219,7 +222,7 @@ class MainWindow(QMainWindow):
         )
         return lbl
 
-    # ── View 이벤트 → ViewModel 커맨드 ───────────────────
+    # ── View 이벤트 → ViewModel 커맨드 ──────────────────
     def _open_settings(self) -> None:
         dlg = SettingsDialog(self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
@@ -265,7 +268,7 @@ class MainWindow(QMainWindow):
             output_path=self.le_out.text().strip(),
         )
 
-    # ── ViewModel 시그널 핸들러 ──────────────────────────
+    # ── ViewModel 시그널 핸들러 ───────────────────────
     def _append_log(self, msg: str) -> None:
         self.te_log.append(msg)
         sb = self.te_log.verticalScrollBar()
