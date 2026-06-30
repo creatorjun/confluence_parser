@@ -22,8 +22,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QLineEdit, QPushButton, QCheckBox,
     QComboBox, QTextEdit, QProgressBar,
-    QFileDialog, QDialog, QDialogButtonBox,
-    QMessageBox, QFrame, QGroupBox,
+    QFileDialog, QDialog,
+    QMessageBox, QFrame, QGroupBox, QSizePolicy, QSpacerItem,
 )
 
 import config
@@ -101,18 +101,13 @@ QLineEdit {{
     selection-background-color: {_ACCENT};
     selection-color: #fff;
 }}
-QLineEdit:hover {{
-    border-color: #B0B8C8;
-}}
+QLineEdit:hover {{ border-color: #B0B8C8; }}
 QLineEdit:focus {{
     border-color: {_BORDER_FOC};
     background: {_SURFACE};
 }}
 QLineEdit:disabled {{
     background: {_SURFACE2};
-    color: {_TEXT_HINT};
-}}
-QLineEdit[placeholderText] {{
     color: {_TEXT_HINT};
 }}
 
@@ -177,7 +172,7 @@ QPushButton:disabled {{
     color: #fff;
 }}
 
-/* Secondary 버튼 */
+/* Secondary 버튼 (기본 상태) */
 QPushButton#btn_secondary {{
     background: {_SURFACE};
     color: {_TEXT};
@@ -196,6 +191,25 @@ QPushButton#btn_secondary:disabled {{
     background: {_SURFACE2};
     color: {_TEXT_HINT};
     border-color: {_BORDER};
+}}
+
+/* Secondary 버튼 — 경고(인증 미설정) 상태 */
+QPushButton#btn_settings_warn {{
+    background: {_SURFACE};
+    color: {_ERROR};
+    border: 1.5px solid {_ERROR};
+    font-weight: 700;
+    border-radius: 7px;
+    padding: 9px 20px;
+    font-size: 13px;
+}}
+QPushButton#btn_settings_warn:hover {{
+    background: #FEE2E2;
+    border-color: #B91C1C;
+    color: #B91C1C;
+}}
+QPushButton#btn_settings_warn:pressed {{
+    background: #FECACA;
 }}
 
 /* Danger 버튼 */
@@ -291,22 +305,6 @@ QLabel#lbl_sub {{
     color: {_TEXT_SEC};
     background: transparent;
 }}
-QLabel#lbl_cred_ok {{
-    font-size: 12px;
-    color: {_SUCCESS};
-    background: transparent;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 12px;
-}}
-QLabel#lbl_cred_err {{
-    font-size: 12px;
-    color: {_ERROR};
-    background: #FEE2E2;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 12px;
-}}
 
 /* 구분선 */
 QFrame#divider {{
@@ -334,9 +332,6 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
 QDialog {{
     background: {_SURFACE};
 }}
-QDialogButtonBox QPushButton {{
-    min-width: 80px;
-}}
 """
 
 
@@ -349,7 +344,6 @@ _ICO_PATH = Path(__file__).parent / "icon" / "parser.ico"
 def _app_icon() -> QIcon:
     if _ICO_PATH.exists():
         return QIcon(str(_ICO_PATH))
-    # fallback: 비트맵 생성으로 도형 아이콘 제작
     from PyQt6.QtGui import QPixmap, QPainter, QColor, QFont as QF
     pm = QPixmap(64, 64)
     pm.fill(QColor(_ACCENT))
@@ -363,7 +357,7 @@ def _app_icon() -> QIcon:
 
 
 # ─────────────────────────────────────────────
-# 세퍼레이터 헬퍼
+# 세퍼레이터 / 레이블 헬퍼
 # ─────────────────────────────────────────────
 def _divider() -> QFrame:
     f = QFrame()
@@ -404,7 +398,7 @@ class SettingsDialog(QDialog):
         hdr.setStyleSheet(f"background:{_ACCENT}; border-radius:0px;")
         hdr_layout = QVBoxLayout(hdr)
         hdr_layout.setContentsMargins(24, 20, 24, 20)
-        t = QLabel("참즉 설정")
+        t = QLabel("인증 설정")
         t.setStyleSheet("font-size:17px; font-weight:700; color:#fff; background:transparent;")
         sub = QLabel("Confluence 이메일 주소와 API Token을 입력하세요")
         sub.setStyleSheet("font-size:12px; color:rgba(255,255,255,0.75); background:transparent;")
@@ -426,7 +420,7 @@ class SettingsDialog(QDialog):
         body_layout.addSpacing(4)
         body_layout.addWidget(_label("API Token"))
         self.le_token = QLineEdit(config.get("CONFLUENCE_API_TOKEN"))
-        self.le_token.setPlaceholderText("토큰을 입력하세요 (오픈 시 있으면 유지)")
+        self.le_token.setPlaceholderText("토큰을 입력하세요 (기존 값이 있으면 유지)")
         self.le_token.setEchoMode(QLineEdit.EchoMode.Password)
         body_layout.addWidget(self.le_token)
 
@@ -492,7 +486,7 @@ class MainWindow(QMainWindow):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        # ── 헤더 파라 ──
+        # ── 헤더 패널 ──
         hdr_panel = QWidget()
         hdr_panel.setObjectName("header_panel")
         hdr_panel.setFixedHeight(64)
@@ -503,7 +497,7 @@ class MainWindow(QMainWindow):
         hdr_layout.setContentsMargins(24, 0, 20, 0)
         hdr_layout.setSpacing(6)
 
-        # 로고 영역
+        # 로고
         logo_row = QHBoxLayout()
         logo_row.setSpacing(4)
         lbl_logo1 = QLabel("Confluence")
@@ -516,17 +510,12 @@ class MainWindow(QMainWindow):
 
         hdr_layout.addStretch()
 
-        # 인증 상태 백지
-        self.lbl_cred = QLabel()
-        hdr_layout.addWidget(self.lbl_cred)
-
-        hdr_layout.addSpacing(8)
-
-        btn_settings = QPushButton("⚙️  설정")
-        btn_settings.setObjectName("btn_secondary")
-        btn_settings.setFixedSize(90, 36)
-        btn_settings.clicked.connect(self._open_settings)
-        hdr_layout.addWidget(btn_settings)
+        # 설정 버튼 (인스턴스 변수로 저장 — _check_credentials 에서 상태 변경)
+        self.btn_settings = QPushButton("⚙  설정")
+        self.btn_settings.setObjectName("btn_secondary")
+        self.btn_settings.setFixedSize(100, 36)
+        self.btn_settings.clicked.connect(self._open_settings)
+        hdr_layout.addWidget(self.btn_settings)
 
         root_layout.addWidget(hdr_panel)
 
@@ -565,7 +554,7 @@ class MainWindow(QMainWindow):
 
         self.cb_format = QComboBox()
         self.cb_format.addItems([
-            "클  Markdown (.md)",
+            "  Markdown (.md)",
             "📄  Word (.docx)",
             "📊  Excel (.xlsx)",
             "🗂  PDF (.pdf)",
@@ -578,11 +567,10 @@ class MainWindow(QMainWindow):
         self.chk_children.setChecked(True)
         grid.addWidget(self.chk_children, 2, 2)
 
-        grid.addItem(__import__('PyQt6.QtWidgets', fromlist=['QSpacerItem'])
-                     .QSpacerItem(0, 0, __import__('PyQt6.QtWidgets', fromlist=['QSizePolicy'])
-                                  .QSizePolicy.Policy.Expanding,
-                                  __import__('PyQt6.QtWidgets', fromlist=['QSizePolicy'])
-                                  .QSizePolicy.Policy.Minimum), 2, 3)
+        grid.addItem(
+            QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum),
+            2, 3,
+        )
 
         # 저장 경로 행
         lbl_out = _label("저장 경로", color=_TEXT_SEC)
@@ -608,12 +596,12 @@ class MainWindow(QMainWindow):
         btn_row.setSpacing(10)
         btn_row.addStretch()
 
-        self.btn_run = QPushButton("▶️  변환 시작")
+        self.btn_run = QPushButton("▶  변환 시작")
         self.btn_run.setFixedSize(160, 44)
         self.btn_run.clicked.connect(self._start)
         btn_row.addWidget(self.btn_run)
 
-        self.btn_stop = QPushButton("⏹️  중단")
+        self.btn_stop = QPushButton("⏹  중단")
         self.btn_stop.setObjectName("btn_danger")
         self.btn_stop.setFixedSize(110, 44)
         self.btn_stop.setEnabled(False)
@@ -674,21 +662,16 @@ class MainWindow(QMainWindow):
 
     # ── 슬롯 ────────────────────────────────
     def _check_credentials(self):
-        email = config.get("CONFLUENCE_EMAIL")
-        if email:
-            self.lbl_cred.setText(f"✔  {email}")
-            self.lbl_cred.setObjectName("lbl_cred_ok")
-            self.lbl_cred.setStyleSheet(
-                f"font-size:12px; color:{_SUCCESS}; background:#D1FAE5;"
-                "font-weight:600; padding:4px 12px; border-radius:12px;"
-            )
+        """인증 정보 유무에 따라 설정 버튼 스타일을 전환한다."""
+        has_cred = bool(config.get("CONFLUENCE_EMAIL") and config.get("CONFLUENCE_API_TOKEN"))
+        if has_cred:
+            self.btn_settings.setText("⚙  설정")
+            self.btn_settings.setObjectName("btn_secondary")
         else:
-            self.lbl_cred.setText("⚠️  인증 정보 없음")
-            self.lbl_cred.setObjectName("lbl_cred_err")
-            self.lbl_cred.setStyleSheet(
-                f"font-size:12px; color:{_ERROR}; background:#FEE2E2;"
-                "font-weight:600; padding:4px 12px; border-radius:12px;"
-            )
+            self.btn_settings.setText("❗ 설정 필요")
+            self.btn_settings.setObjectName("btn_settings_warn")
+        # objectName 변경 후 QSS 재적용
+        self.btn_settings.setStyle(self.btn_settings.style())
 
     def _open_settings(self):
         dlg = SettingsDialog(self)
@@ -790,7 +773,6 @@ class MainWindow(QMainWindow):
 # 엔트리포인트
 # ─────────────────────────────────────────────
 def main():
-    # Windows 작업표시줄 아이콘 아이디 설정
     try:
         import ctypes
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
@@ -803,9 +785,7 @@ def main():
     app.setStyle("Fusion")
     app.setApplicationName("Confluence Parser")
     app.setOrganizationName("confluence-parser")
-
-    icon = _app_icon()
-    app.setWindowIcon(icon)  # 작업표시줄 + 타이틀바 아이콘
+    app.setWindowIcon(_app_icon())
 
     win = MainWindow()
     win.show()
