@@ -561,10 +561,10 @@ class MainWindow(QMainWindow):
 
         self.cb_format = QComboBox()
         self.cb_format.addItems([
-            "  Markdown (.md)",
-            "📄  Word (.docx)",
-            "📊  Excel (.xlsx)",
-            "🗂  PDF (.pdf)",
+            "Markdown (.md)",
+            "Word (.docx)",
+            "Excel (.xlsx)",
+            "PDF (.pdf)",
         ])
         self.cb_format.setFixedHeight(40)
         self.cb_format.setFixedWidth(200)
