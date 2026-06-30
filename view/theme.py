@@ -6,6 +6,7 @@ SURFACE    = "#FFFFFF"
 SURFACE2   = "#F0F2F5"
 BORDER     = "#DDE1E7"
 BORDER_FOC = "#2563EB"
+BORDER_BTM = "#B0B8C8"
 ACCENT     = "#2563EB"
 ACCENT_H   = "#1D4ED8"
 ACCENT_P   = "#1E40AF"
@@ -120,19 +121,28 @@ QPushButton:disabled {{ background: {ACCENT_DIS}; color: #fff; }}
 QPushButton#btn_secondary {{
     background: {SURFACE};
     color: {TEXT};
-    border: 1.5px solid {BORDER};
+    border-top: 1.5px solid {BORDER};
+    border-left: 1.5px solid {BORDER};
+    border-right: 1.5px solid {BORDER};
+    border-bottom: 2.5px solid {BORDER_BTM};
     font-weight: 500;
 }}
 QPushButton#btn_secondary:hover {{
     background: {SURFACE2};
-    border-color: {BORDER_FOC};
+    border-top: 1.5px solid {BORDER_FOC};
+    border-left: 1.5px solid {BORDER_FOC};
+    border-right: 1.5px solid {BORDER_FOC};
+    border-bottom: 2.5px solid {ACCENT};
     color: {ACCENT};
 }}
-QPushButton#btn_secondary:pressed {{ background: #E0EAFE; }}
+QPushButton#btn_secondary:pressed {{
+    background: #E0EAFE;
+    border-bottom: 1.5px solid {ACCENT_P};
+}}
 QPushButton#btn_secondary:disabled {{
     background: {SURFACE2};
     color: {TEXT_HINT};
-    border-color: {BORDER};
+    border: 1.5px solid {BORDER};
 }}
 QPushButton#btn_settings_warn {{
     background: {SURFACE};
