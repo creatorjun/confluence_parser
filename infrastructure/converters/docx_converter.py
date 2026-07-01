@@ -9,7 +9,7 @@ from docx.shared import Inches, Pt, RGBColor
 
 from domain.model import PageNode
 from domain.ports import IConverter
-from html_cleaner import clean, is_code_table, extract_code_lines
+from infrastructure.converters.html_cleaner import clean, is_code_table, extract_code_lines
 
 
 def _shd(cell, hex_color: str):
