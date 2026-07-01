@@ -231,5 +231,17 @@ QScrollBar::handle:vertical {{
 }}
 QScrollBar::handle:vertical:hover {{ background: #B0B8C8; }}
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
-QDialog {{ background: {SURFACE}; }}
+QDialog {{
+    background: {BG};
+}}
+QMessageBox {{
+    background: {BG};
+}}
+QMessageBox QLabel {{
+    background: transparent;
+    color: {TEXT};
+}}
+QMessageBox QPushButton {{
+    min-width: 80px;
+}}
 """
