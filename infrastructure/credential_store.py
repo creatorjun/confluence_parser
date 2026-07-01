@@ -9,15 +9,14 @@ from dotenv import load_dotenv
 from platformdirs import user_config_dir
 
 from domain.ports import ICredentialStore
+from infrastructure.constants import APP_NAME, APP_AUTHOR
 
-_APP_NAME        = "SeculayerDocumentParser"
-_APP_AUTHOR      = "Seculayer"
-_KEYRING_SERVICE  = "SeculayerDocumentParser"
+_KEYRING_SERVICE  = APP_NAME
 _KEYRING_USERNAME = "confluence_api_token"
 
 
 def _resolve_env_path() -> Path:
-    config_dir = Path(user_config_dir(_APP_NAME, _APP_AUTHOR))
+    config_dir = Path(user_config_dir(APP_NAME, APP_AUTHOR))
     config_dir.mkdir(parents=True, exist_ok=True)
     return config_dir / ".env"
 
@@ -25,10 +24,8 @@ def _resolve_env_path() -> Path:
 def _legacy_env_path() -> Path:
     """실행 파일 또는 스크립트 기준 루트 .env 경로 (이전 방식)."""
     if getattr(sys, "frozen", False):
-        # PyInstaller --onefile / --onedir 빌드
         base = Path(sys.executable).parent
     else:
-        # 개발 환경: 프로젝트 루트
         base = Path(__file__).parent.parent
     return base / ".env"
 
@@ -81,11 +78,11 @@ def _migrate_legacy_env() -> None:
     완료 후 레거시 파일을 .env.migrated 로 이름 변경하여 백업.
     """
     if _ENV_PATH.exists():
-        return  # 이미 새 경로에 설정 존재 → 마이그레이션 불필요
+        return
 
     legacy = _legacy_env_path()
     if not legacy.exists():
-        return  # 레거시 파일도 없음 → 신규 설치
+        return
 
     try:
         data = _parse_env_file(legacy)
@@ -96,9 +93,8 @@ def _migrate_legacy_env() -> None:
     token = data.get("CONFLUENCE_API_TOKEN", "")
 
     if not email and not token:
-        return  # 자격증명 없는 파일은 마이그레이션 대상 아님
+        return
 
-    # 1) 이메일 → 새 .env
     lines: list[str] = []
     if email:
         lines.append(f"CONFLUENCE_EMAIL={email}")
@@ -106,23 +102,20 @@ def _migrate_legacy_env() -> None:
     tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
     tmp.replace(_ENV_PATH)
 
-    # 2) 토큰 → keyring 우선, 실패 시 .env fallback
     if token:
         stored = _try_keyring_set(token)
         if not stored:
-            # keyring 불가 → .env 에 추가
             existing = _ENV_PATH.read_text(encoding="utf-8").rstrip()
             _ENV_PATH.write_text(
                 existing + f"\nCONFLUENCE_API_TOKEN={token}\n",
                 encoding="utf-8",
             )
 
-    # 3) 레거시 파일 백업 (.env.migrated)
     migrated_path = legacy.with_name(".env.migrated")
     try:
         legacy.rename(migrated_path)
     except OSError:
-        pass  # 이름 변경 실패해도 마이그레이션 자체는 성공으로 처리
+        pass
 
 
 # ── SecureCredentialStore ─────────────────────────────────────────────────────
@@ -135,28 +128,23 @@ class SecureCredentialStore(ICredentialStore):
     """
 
     def __init__(self) -> None:
-        _migrate_legacy_env()          # 첫 실행 시 한 번만 동작
+        _migrate_legacy_env()
         load_dotenv(_ENV_PATH, override=True)
 
-    # ── ICredentialStore ──────────────────────────────────────────────────────
     def load(self) -> tuple[str, str]:
         email = os.environ.get("CONFLUENCE_EMAIL", "")
-
         token = _try_keyring_get()
         if not token:
             token = os.environ.get("CONFLUENCE_API_TOKEN", "")
-
         return email, token
 
     def save(self, email: str, token: str) -> None:
         self._save_email_to_env(email)
-
         stored_in_keyring = _try_keyring_set(token)
         if stored_in_keyring:
             self._remove_token_from_env()
         else:
             self._save_token_to_env(token)
-
         os.environ["CONFLUENCE_EMAIL"] = email
         os.environ["CONFLUENCE_API_TOKEN"] = token
 
@@ -188,4 +176,4 @@ class SecureCredentialStore(ICredentialStore):
     def _write_env_lines(self, lines: list[str]) -> None:
         tmp = _ENV_PATH.with_suffix(".tmp")
         tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        tmp.replace(_ENV_PATH)  # 원자적 교체
+        tmp.replace(_ENV_PATH)
