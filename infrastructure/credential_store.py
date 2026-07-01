@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -9,9 +10,9 @@ from platformdirs import user_config_dir
 
 from domain.ports import ICredentialStore
 
-_APP_NAME   = "SeculayerDocumentParser"
-_APP_AUTHOR = "Seculayer"
-_KEYRING_SERVICE = "SeculayerDocumentParser"
+_APP_NAME        = "SeculayerDocumentParser"
+_APP_AUTHOR      = "Seculayer"
+_KEYRING_SERVICE  = "SeculayerDocumentParser"
 _KEYRING_USERNAME = "confluence_api_token"
 
 
@@ -21,11 +22,23 @@ def _resolve_env_path() -> Path:
     return config_dir / ".env"
 
 
+def _legacy_env_path() -> Path:
+    """실행 파일 또는 스크립트 기준 루트 .env 경로 (이전 방식)."""
+    if getattr(sys, "frozen", False):
+        # PyInstaller --onefile / --onedir 빌드
+        base = Path(sys.executable).parent
+    else:
+        # 개발 환경: 프로젝트 루트
+        base = Path(__file__).parent.parent
+    return base / ".env"
+
+
 _ENV_PATH = _resolve_env_path()
 
 
+# ── keyring helpers ───────────────────────────────────────────────────────────
+
 def _try_keyring_get() -> str:
-    """keyring 사용 가능 환경에서만 토큰을 읽는다. 실패 시 빈 문자열 반환."""
     try:
         import keyring
         value = keyring.get_password(_KEYRING_SERVICE, _KEYRING_USERNAME)
@@ -35,7 +48,6 @@ def _try_keyring_get() -> str:
 
 
 def _try_keyring_set(token: str) -> bool:
-    """keyring 저장 시도. 성공 시 True, 실패 시 False."""
     try:
         import keyring
         keyring.set_password(_KEYRING_SERVICE, _KEYRING_USERNAME, token)
@@ -44,22 +56,93 @@ def _try_keyring_set(token: str) -> bool:
         return False
 
 
+# ── migration ─────────────────────────────────────────────────────────────────
+
+def _parse_env_file(path: Path) -> dict[str, str]:
+    """단순 KEY=VALUE 파서. 주석·빈 줄 무시."""
+    result: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        result[key.strip()] = val.strip()
+    return result
+
+
+def _migrate_legacy_env() -> None:
+    """레거시 루트 .env 를 새 경로로 마이그레이션.
+
+    조건:
+    - 새 경로 .env 가 아직 없을 것  (이미 마이그레이션 됐거나 신규 설치)
+    - 레거시 .env 가 존재할 것
+    - CONFLUENCE_EMAIL 또는 CONFLUENCE_API_TOKEN 이 담겨 있을 것
+
+    완료 후 레거시 파일을 .env.migrated 로 이름 변경하여 백업.
+    """
+    if _ENV_PATH.exists():
+        return  # 이미 새 경로에 설정 존재 → 마이그레이션 불필요
+
+    legacy = _legacy_env_path()
+    if not legacy.exists():
+        return  # 레거시 파일도 없음 → 신규 설치
+
+    try:
+        data = _parse_env_file(legacy)
+    except OSError:
+        return
+
+    email = data.get("CONFLUENCE_EMAIL", "")
+    token = data.get("CONFLUENCE_API_TOKEN", "")
+
+    if not email and not token:
+        return  # 자격증명 없는 파일은 마이그레이션 대상 아님
+
+    # 1) 이메일 → 새 .env
+    lines: list[str] = []
+    if email:
+        lines.append(f"CONFLUENCE_EMAIL={email}")
+    tmp = _ENV_PATH.with_suffix(".tmp")
+    tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    tmp.replace(_ENV_PATH)
+
+    # 2) 토큰 → keyring 우선, 실패 시 .env fallback
+    if token:
+        stored = _try_keyring_set(token)
+        if not stored:
+            # keyring 불가 → .env 에 추가
+            existing = _ENV_PATH.read_text(encoding="utf-8").rstrip()
+            _ENV_PATH.write_text(
+                existing + f"\nCONFLUENCE_API_TOKEN={token}\n",
+                encoding="utf-8",
+            )
+
+    # 3) 레거시 파일 백업 (.env.migrated)
+    migrated_path = legacy.with_name(".env.migrated")
+    try:
+        legacy.rename(migrated_path)
+    except OSError:
+        pass  # 이름 변경 실패해도 마이그레이션 자체는 성공으로 처리
+
+
+# ── SecureCredentialStore ─────────────────────────────────────────────────────
+
 class SecureCredentialStore(ICredentialStore):
     """이메일은 platformdirs 기반 .env 에, 토큰은 OS 보안 저장소(keyring)에 저장.
 
-    keyring 사용 불가 환경(headless 서버 등)에서는 .env 에 fallback.
+    - keyring 사용 불가 환경(headless 서버 등)에서는 .env 에 fallback
+    - 첫 실행 시 레거시 루트 .env 를 새 경로로 자동 마이그레이션
     """
 
     def __init__(self) -> None:
+        _migrate_legacy_env()          # 첫 실행 시 한 번만 동작
         load_dotenv(_ENV_PATH, override=True)
 
-    # ── ICredentialStore ──────────────────────────────
+    # ── ICredentialStore ──────────────────────────────────────────────────────
     def load(self) -> tuple[str, str]:
         email = os.environ.get("CONFLUENCE_EMAIL", "")
 
-        # 1순위: OS secure store
         token = _try_keyring_get()
-        # 2순위: .env fallback (이전 방식으로 저장된 경우 호환)
         if not token:
             token = os.environ.get("CONFLUENCE_API_TOKEN", "")
 
@@ -68,19 +151,16 @@ class SecureCredentialStore(ICredentialStore):
     def save(self, email: str, token: str) -> None:
         self._save_email_to_env(email)
 
-        # 토큰 저장: keyring 우선, 실패 시 .env fallback
         stored_in_keyring = _try_keyring_set(token)
         if stored_in_keyring:
-            # keyring 에 저장 성공했으면 .env 에서 토큰 제거
             self._remove_token_from_env()
         else:
-            # keyring 사용 불가 환경: .env fallback
             self._save_token_to_env(token)
 
         os.environ["CONFLUENCE_EMAIL"] = email
         os.environ["CONFLUENCE_API_TOKEN"] = token
 
-    # ── private helpers ───────────────────────────────
+    # ── private helpers ───────────────────────────────────────────────────────
     def _save_email_to_env(self, email: str) -> None:
         lines = self._read_env_lines(exclude={"CONFLUENCE_EMAIL"})
         lines.append(f"CONFLUENCE_EMAIL={email}")
@@ -108,4 +188,4 @@ class SecureCredentialStore(ICredentialStore):
     def _write_env_lines(self, lines: list[str]) -> None:
         tmp = _ENV_PATH.with_suffix(".tmp")
         tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        tmp.replace(_ENV_PATH)  # 원자적 교체 — 저장 중 비정상 종료 대비
+        tmp.replace(_ENV_PATH)  # 원자적 교체
