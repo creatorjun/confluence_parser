@@ -7,9 +7,7 @@ from pathlib import Path
 from platformdirs import user_config_dir
 
 from domain.ports import IAppSettingsStore
-
-_APP_NAME   = "SeculayerDocumentParser"
-_APP_AUTHOR = "Seculayer"
+from infrastructure.constants import APP_NAME, APP_AUTHOR
 
 _DEFAULTS: dict = {
     "fmt_index":        0,      # 0=md, 1=docx, 2=xlsx, 3=pdf
@@ -19,7 +17,7 @@ _DEFAULTS: dict = {
 
 
 def _resolve_settings_path() -> Path:
-    config_dir = Path(user_config_dir(_APP_NAME, _APP_AUTHOR))
+    config_dir = Path(user_config_dir(APP_NAME, APP_AUTHOR))
     config_dir.mkdir(parents=True, exist_ok=True)
     return config_dir / "settings.json"
 
@@ -42,16 +40,13 @@ class JsonAppSettingsStore(IAppSettingsStore):
             raw = json.loads(_SETTINGS_PATH.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             return dict(_DEFAULTS)
-        # 기본값으로 누락 키 보정 후 알 수 없는 키 제거
-        merged = {k: raw.get(k, v) for k, v in _DEFAULTS.items()}
-        return merged
+        return {k: raw.get(k, v) for k, v in _DEFAULTS.items()}
 
     def save(self, settings: dict) -> None:
-        # 알 수 없는 키 제거 후 타입 검증
         clean = {k: settings.get(k, v) for k, v in _DEFAULTS.items()}
         tmp = _SETTINGS_PATH.with_suffix(".tmp")
         tmp.write_text(
             json.dumps(clean, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
-        tmp.replace(_SETTINGS_PATH)  # 원자적 교체
+        tmp.replace(_SETTINGS_PATH)
