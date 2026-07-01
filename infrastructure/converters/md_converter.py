@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup, NavigableString
 
 from domain.model import PageNode
 from domain.ports import IConverter
-from html_cleaner import clean, is_code_table, extract_code_lines
+from infrastructure.converters.html_cleaner import clean, is_code_table, extract_code_lines
 
 
 def _node_to_md(node) -> str:
