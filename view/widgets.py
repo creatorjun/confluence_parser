@@ -24,7 +24,7 @@ def app_icon() -> QIcon:
     f.setBold(True)
     f.setPixelSize(30)
     p.setFont(f)
-    p.drawText(pm.rect(), Qt.AlignmentFlag.AlignCenter, "CP")
+    p.drawText(pm.rect(), Qt.AlignmentFlag.AlignCenter, "SDD")
     p.end()
     return QIcon(pm)
 
