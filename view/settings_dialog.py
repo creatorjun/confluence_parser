@@ -1,10 +1,4 @@
-"""View — 인증 설정 다이얼로그.
-
-바인딩:
-  View  → ViewModel.save(email, token)  호출
-  ViewModel.saved          → accept()
-  ViewModel.validation_failed → QMessageBox 표시
-"""
+# view/settings_dialog.py
 from __future__ import annotations
 
 from PyQt6.QtWidgets import (
@@ -12,26 +6,26 @@ from PyQt6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QMessageBox,
 )
 
+from domain.ports import ICredentialStore
 from view.theme import ACCENT
 from view.widgets import app_icon, make_divider, make_label, make_btn
 from viewmodel.settings_viewmodel import SettingsViewModel
 
 
 class SettingsDialog(QDialog):
-    def __init__(self, parent=None) -> None:
+    def __init__(self, credential_store: ICredentialStore, parent=None) -> None:
         super().__init__(parent)
         self.setWindowTitle("인증 설정 — Confluence Parser")
         self.setWindowIcon(app_icon())
         self.setMinimumWidth(460)
 
-        self._vm = SettingsViewModel(self)
+        self._vm = SettingsViewModel(credential_store, self)
         self._vm.saved.connect(self.accept)
         self._vm.validation_failed.connect(
             lambda msg: QMessageBox.warning(self, "입력 오류", msg)
         )
         self._build()
 
-    # ── UI 구성 ────────────────────────────────────────
     def _build(self) -> None:
         root = QVBoxLayout(self)
         root.setSpacing(0)
@@ -100,6 +94,5 @@ class SettingsDialog(QDialog):
 
         return body
 
-    # ── 이벤트 → ViewModel ────────────────────────────
     def _on_save(self) -> None:
         self._vm.save(self.le_email.text(), self.le_token.text())

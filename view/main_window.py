@@ -13,21 +13,23 @@ from PyQt6.QtWidgets import (
     QSizePolicy, QSpacerItem,
 )
 
+from domain.ports import ICredentialStore
+from view.settings_dialog import SettingsDialog
 from view.theme import ACCENT, TEXT_SEC, HDR_BG, BORDER
 from view.widgets import app_icon, make_divider, make_label, make_btn
 from viewmodel.main_viewmodel import MainViewModel
-from view.settings_dialog import SettingsDialog
 
 
 class MainWindow(QMainWindow):
-    def __init__(self) -> None:
+    def __init__(self, viewmodel: MainViewModel) -> None:
         super().__init__()
         self.setWindowTitle("Seculayer Document Downloader")
         self.setWindowIcon(app_icon())
         self.setMinimumSize(800, 640)
         self.resize(940, 720)
 
-        self._vm = MainViewModel(self)
+        self._vm = viewmodel
+        self._cred_store: ICredentialStore = viewmodel._cred_store
         self._bind_viewmodel()
         self._build_ui()
         self._refresh_credentials(self._vm.has_credentials)
@@ -211,7 +213,7 @@ class MainWindow(QMainWindow):
         return lbl
 
     def _open_settings(self) -> None:
-        dlg = SettingsDialog(self)
+        dlg = SettingsDialog(self._cred_store, self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self._vm.notify_credentials_updated()
             self._append_log("✅ 인증 정보가 저장되었습니다.")
