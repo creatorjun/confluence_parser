@@ -8,7 +8,7 @@ from openpyxl.utils import get_column_letter
 
 from domain.model import PageNode
 from domain.ports import IConverter
-from html_cleaner import clean, is_code_table, extract_code_lines
+from infrastructure.converters.html_cleaner import clean, is_code_table, extract_code_lines
 
 _H_FILL  = PatternFill("solid", fgColor="2F5496")
 _H_FONT  = Font(name="맑은 고딕", bold=True, color="FFFFFF", size=10)
