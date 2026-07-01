@@ -120,10 +120,12 @@ class MainWindow(QMainWindow):
         ])
         self.cb_format.setFixedHeight(40)
         self.cb_format.setFixedWidth(200)
+        # 저장된 설정 복원
+        self.cb_format.setCurrentIndex(self._vm.saved_fmt_index)
         grid.addWidget(self.cb_format, 2, 1)
 
         self.chk_children = QCheckBox("하위 문서 포함")
-        self.chk_children.setChecked(True)
+        self.chk_children.setChecked(self._vm.saved_include_children)
         grid.addWidget(self.chk_children, 2, 2)
 
         grid.addItem(
@@ -133,12 +135,12 @@ class MainWindow(QMainWindow):
 
         grid.addWidget(_cap("저장 폴더"), 3, 0)
 
-        self.le_out = QLineEdit(self._vm.default_output_dir())
+        self.le_out = QLineEdit(self._vm.saved_output_dir)
         self.le_out.setFixedHeight(40)
         self.le_out.setPlaceholderText("저장할 폴더를 선택하세요")
         grid.addWidget(self.le_out, 3, 1, 1, 3)
 
-        btn_browse = make_btn("📂  저장 폴더", "btn_secondary", height=40, min_width=88)
+        btn_browse = make_btn("📂  찾기", "btn_secondary", height=40, min_width=88)
         btn_browse.clicked.connect(self._browse)
         grid.addWidget(btn_browse, 3, 4)
 

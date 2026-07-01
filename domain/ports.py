@@ -28,3 +28,13 @@ class ICredentialStore(ABC):
 
     @abstractmethod
     def save(self, email: str, token: str) -> None: ...
+
+
+class IAppSettingsStore(ABC):
+    """앱 일반 설정 (자격증명 외) 의 저장/조회 포트."""
+
+    @abstractmethod
+    def load(self) -> dict: ...
+
+    @abstractmethod
+    def save(self, settings: dict) -> None: ...

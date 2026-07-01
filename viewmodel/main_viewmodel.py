@@ -6,7 +6,7 @@ from pathlib import Path
 from PyQt6.QtCore import QObject, pyqtSignal
 
 from application.download_worker import DownloadWorker
-from domain.ports import IConverter, ICredentialStore, IPageRepository
+from domain.ports import IAppSettingsStore, IConverter, ICredentialStore, IPageRepository
 from domain.use_cases import DownloadUseCase
 
 
@@ -31,15 +31,34 @@ class MainViewModel(QObject):
         credential_store: ICredentialStore,
         converters: dict[str, IConverter],
         repo: IPageRepository,
+        settings_store: IAppSettingsStore,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
-        self._cred_store  = credential_store
-        self._converters  = converters
-        self._repo        = repo
+        self._cred_store     = credential_store
+        self._converters     = converters
+        self._repo           = repo
+        self._settings_store = settings_store
         self._worker: DownloadWorker | None = None
-        self._running     = False
+        self._running        = False
 
+        # 앱 시작 시 저장된 설정 복원
+        self._settings: dict = self._settings_store.load()
+
+    # ── 설정 프로퍼티 ────────────────────────────────────
+    @property
+    def saved_fmt_index(self) -> int:
+        return int(self._settings.get("fmt_index", 0))
+
+    @property
+    def saved_include_children(self) -> bool:
+        return bool(self._settings.get("include_children", True))
+
+    @property
+    def saved_output_dir(self) -> str:
+        return self._settings.get("output_dir", "") or self.default_output_dir()
+
+    # ── 기존 프로퍼티 ────────────────────────────────────
     @property
     def has_credentials(self) -> bool:
         email, token = self._cred_store.load()
@@ -58,6 +77,7 @@ class MainViewModel(QObject):
     def notify_credentials_updated(self) -> None:
         self.credentials_changed.emit(self.has_credentials)
 
+    # ── 변환 ─────────────────────────────────────────────
     def start_convert(
         self,
         url: str,
@@ -67,9 +87,20 @@ class MainViewModel(QObject):
     ) -> None:
         if self._running:
             return
-        fmt = self.FORMAT_KEYS[fmt_index]
+
+        # 변환 시작 전 설정 저장
+        self._settings_store.save({
+            "fmt_index":        fmt_index,
+            "include_children": include_children,
+            "output_dir":       output_dir,
+        })
+        self._settings["fmt_index"]        = fmt_index
+        self._settings["include_children"] = include_children
+        self._settings["output_dir"]        = output_dir
+
+        fmt       = self.FORMAT_KEYS[fmt_index]
         converter = self._converters[fmt]
-        ext = self.FORMAT_EXT[fmt]
+        ext       = self.FORMAT_EXT[fmt]
 
         use_case = DownloadUseCase(
             repo=self._repo,

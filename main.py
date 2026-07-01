@@ -13,6 +13,7 @@ except Exception:
 
 from PyQt6.QtWidgets import QApplication
 
+from infrastructure.app_settings_store import JsonAppSettingsStore
 from infrastructure.credential_store import SecureCredentialStore
 from infrastructure.confluence_repository import ConfluenceRepository
 from infrastructure.converters.md_converter import MdConverter
@@ -31,9 +32,10 @@ def main() -> None:
     app.setOrganizationName("Seculayer")
     app.setStyleSheet(QSS)
 
-    cred_store = SecureCredentialStore()
-    email, token = cred_store.load()
-    repo = ConfluenceRepository(email, token)
+    cred_store    = SecureCredentialStore()
+    settings_store = JsonAppSettingsStore()
+    email, token  = cred_store.load()
+    repo          = ConfluenceRepository(email, token)
 
     converters = {
         "md":   MdConverter(),
@@ -46,6 +48,7 @@ def main() -> None:
         credential_store=cred_store,
         converters=converters,
         repo=repo,
+        settings_store=settings_store,
     )
 
     win = MainWindow(viewmodel)
