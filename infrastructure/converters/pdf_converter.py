@@ -10,110 +10,99 @@ from infrastructure.converters.html_cleaner import clean, is_code_table, extract
 try:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
-    from reportlab.lib.enums import TA_LEFT
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.platypus import (
-        SimpleDocTemplate, Paragraph, Spacer, HRFlowable,
-        Table, TableStyle, Preformatted,
+        SimpleDocTemplate, Paragraph, Spacer,
+        HRFlowable, Table, TableStyle, Preformatted,
     )
     _REPORTLAB_OK = True
 except ImportError:
     _REPORTLAB_OK = False
 
-# ── 폰트 등록 (한글 지원) ────────────────────────────────────
-_FONT_REGISTERED = False
-
-_KOREAN_FONT_CANDIDATES = [
-    # Windows 맑은 고딕
-    ("C:/Windows/Fonts/malgun.ttf",    "MalgunGothic"),
-    ("C:/Windows/Fonts/malgunbd.ttf",  "MalgunGothic-Bold"),
-    # macOS 애플 산돌 고딕
-    ("/System/Library/Fonts/AppleSDGothicNeo.ttc", "AppleSDGothicNeo"),
-    # Linux 나눔고딕
-    ("/usr/share/fonts/truetype/nanum/NanumGothic.ttf", "NanumGothic"),
+# ── 폰트 등록 (Windows/macOS/Linux 한글 지원) ───────────────────────────
+_KOREAN_CANDIDATES = [
+    ("C:/Windows/Fonts/malgun.ttf",   "MalgunGothic",
+     "C:/Windows/Fonts/malgunbd.ttf", "MalgunGothic-Bold"),
+    ("/System/Library/Fonts/AppleSDGothicNeo.ttc", "AppleSDGothicNeo", None, None),
+    ("/usr/share/fonts/truetype/nanum/NanumGothic.ttf", "NanumGothic", None, None),
 ]
 
 
-def _register_korean_font() -> str:
-    """Korean 폰트를 등록하고 폰트명 반환. 실패시 Helvetica 반환."""
-    global _FONT_REGISTERED
-    if _FONT_REGISTERED:
-        return "MalgunGothic" if _font_name != "Helvetica" else "Helvetica"
-
+def _register_korean_font() -> tuple[str, str]:
+    """Korean 폰트를 등록하고 (font_name, font_bold) 튜플 반환.
+    등록 실패 시 Helvetica 폴백.
+    """
     import os
-    for path, name in _KOREAN_FONT_CANDIDATES:
-        if os.path.exists(path):
+    for path, name, bold_path, bold_name in _KOREAN_CANDIDATES:
+        if not os.path.exists(path):
+            continue
+        try:
+            pdfmetrics.registerFont(TTFont(name, path))
+        except Exception:
+            continue
+
+        registered_bold = name  # 볼드 없으면 일반 폰트로 폴백
+        if bold_path and bold_name and os.path.exists(bold_path):
             try:
-                pdfmetrics.registerFont(TTFont(name, path))
-                bold_registered = False
-                for bp, bn in _KOREAN_FONT_CANDIDATES:
-                    if "Bold" in bn or "bd" in bp:
-                        if os.path.exists(bp):
-                            try:
-                                pdfmetrics.registerFont(TTFont(bn, bp))
-                                bold_registered = True
-                            except Exception:
-                                pass
-                        break
-                _FONT_REGISTERED = True
-                globals()["_font_name"] = name
-                globals()["_font_bold"] = name if not bold_registered else bn
-                return name
+                pdfmetrics.registerFont(TTFont(bold_name, bold_path))
+                registered_bold = bold_name
             except Exception:
-                continue
-    globals()["_font_name"] = "Helvetica"
-    globals()["_font_bold"] = "Helvetica-Bold"
-    return "Helvetica"
+                pass
+        return name, registered_bold
 
-
-_font_name = "Helvetica"
-_font_bold = "Helvetica-Bold"
+    return "Helvetica", "Helvetica-Bold"
 
 
 # ── 스타일 빌더 ────────────────────────────────────────────────────────
 def _make_styles(font: str, font_bold: str) -> dict:
-    base = getSampleStyleSheet()
-    def ps(name, **kw) -> ParagraphStyle:
-        return ParagraphStyle(name, fontName=font, **kw)
+    """주어진 폰트로 ParagraphStyle 딕셔너리 생성.
+
+    내부 헬퍼 ps()는 별도의 fn 인수로 폰트명을 받으므로
+    fontName 키워드가 **kw 에 중복 전달되는 문제가 없다.
+    """
+    def ps(name: str, fn: str | None = None, **kw) -> ParagraphStyle:
+        return ParagraphStyle(name, fontName=fn or font, **kw)
 
     return {
-        "h1": ps("H1", fontName=font_bold, fontSize=18, textColor=colors.HexColor("#1F3864"),
-                 spaceAfter=6, spaceBefore=18, borderPadding=(0,0,4,0)),
-        "h2": ps("H2", fontName=font_bold, fontSize=14, textColor=colors.HexColor("#2F5496"),
+        "h1": ps("H1", fn=font_bold, fontSize=18,
+                 textColor=colors.HexColor("#1F3864"),
+                 spaceAfter=6, spaceBefore=18),
+        "h2": ps("H2", fn=font_bold, fontSize=14,
+                 textColor=colors.HexColor("#2F5496"),
                  spaceAfter=4, spaceBefore=14),
-        "h3": ps("H3", fontName=font_bold, fontSize=12, textColor=colors.HexColor("#2F5496"),
+        "h3": ps("H3", fn=font_bold, fontSize=12,
+                 textColor=colors.HexColor("#2F5496"),
                  spaceAfter=3, spaceBefore=12),
-        "h4": ps("H4", fontName=font_bold, fontSize=10, textColor=colors.HexColor("#333333"),
+        "h4": ps("H4", fn=font_bold, fontSize=10,
+                 textColor=colors.HexColor("#333333"),
                  spaceAfter=2, spaceBefore=10),
-        "h5": ps("H5", fontName=font_bold, fontSize=10, textColor=colors.HexColor("#333333"),
+        "h5": ps("H5", fn=font_bold, fontSize=10,
+                 textColor=colors.HexColor("#333333"),
                  spaceAfter=2, spaceBefore=8),
-        "h6": ps("H6", fontName=font_bold, fontSize=10, textColor=colors.HexColor("#333333"),
+        "h6": ps("H6", fn=font_bold, fontSize=10,
+                 textColor=colors.HexColor("#333333"),
                  spaceAfter=2, spaceBefore=6),
-        "body": ps("Body", fontSize=10, leading=16, spaceAfter=4),
-        "bullet": ps("Bullet", fontSize=10, leading=16, leftIndent=16,
-                     bulletIndent=6, spaceAfter=2),
-        "code": ParagraphStyle(
-            "Code", fontName="Courier", fontSize=9, leading=13,
-            backColor=colors.HexColor("#F4F4F4"),
-            borderColor=colors.HexColor("#4A90D9"),
-            borderWidth=0, leftIndent=12, rightIndent=4,
-            spaceBefore=4, spaceAfter=4,
-        ),
-        "th": ParagraphStyle(
-            "TH", fontName=font_bold, fontSize=9, leading=12,
-            textColor=colors.white,
-        ),
-        "td": ps("TD", fontSize=9, leading=12),
+        "body":   ps("Body",   fontSize=10, leading=16, spaceAfter=4),
+        "bullet": ps("Bullet", fontSize=10, leading=16,
+                     leftIndent=16, bulletIndent=6, spaceAfter=2),
+        # fn="Courier" 사용 — font 기본값과 충돌 없음
+        "code":   ps("Code",   fn="Courier", fontSize=9, leading=13,
+                     backColor=colors.HexColor("#F4F4F4"),
+                     leftIndent=12, rightIndent=4,
+                     spaceBefore=4, spaceAfter=4),
+        "th":     ps("TH",     fn=font_bold, fontSize=9, leading=12,
+                     textColor=colors.white),
+        "td":     ps("TD",     fontSize=9, leading=12),
     }
 
 
-# ── HTML → Flowable 변환 ─────────────────────────────────────────────────
-_TBL_HEADER_BG  = colors.HexColor("#2F5496")
-_TBL_EVEN_BG    = colors.HexColor("#F2F6FC")
-_TBL_BORDER     = colors.HexColor("#AAAAAA")
+# ── 테이블 Flowable ────────────────────────────────────────────────────────
+_TBL_HEADER_BG = colors.HexColor("#2F5496") if _REPORTLAB_OK else None
+_TBL_EVEN_BG   = colors.HexColor("#F2F6FC") if _REPORTLAB_OK else None
+_TBL_BORDER    = colors.HexColor("#AAAAAA") if _REPORTLAB_OK else None
 
 
 def _table_flowable(node: Tag, styles: dict):
@@ -122,14 +111,12 @@ def _table_flowable(node: Tag, styles: dict):
         return None
 
     data = []
-    row_is_header = []
     for ri, tr in enumerate(rows_html):
         cells = tr.find_all(["td", "th"])
         is_hdr = any(c.name == "th" for c in cells) or ri == 0
-        row_is_header.append(is_hdr)
-        style = styles["th"] if is_hdr else styles["td"]
+        cell_style = styles["th"] if is_hdr else styles["td"]
         data.append([
-            Paragraph(c.get_text(strip=True).replace("&", "&amp;"), style)
+            Paragraph(c.get_text(strip=True).replace("&", "&amp;"), cell_style)
             for c in cells
         ])
 
@@ -137,32 +124,34 @@ def _table_flowable(node: Tag, styles: dict):
         return None
 
     col_count = max(len(r) for r in data)
-    col_width = (A4[0] - 40 * mm) / col_count
+    col_width  = (A4[0] - 40 * mm) / col_count
 
     tbl = Table(data, colWidths=[col_width] * col_count, repeatRows=1)
-    ts = [
-        ("BACKGROUND", (0, 0), (-1, 0), _TBL_HEADER_BG),
-        ("TEXTCOLOR",  (0, 0), (-1, 0), colors.white),
-        ("FONTNAME",   (0, 0), (-1, 0), _font_bold),
-        ("FONTSIZE",   (0, 0), (-1, -1), 9),
-        ("GRID",       (0, 0), (-1, -1), 0.5, _TBL_BORDER),
-        ("VALIGN",     (0, 0), (-1, -1), "TOP"),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1),
-         [colors.white, _TBL_EVEN_BG]),
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0, 0), (-1, 0),  _TBL_HEADER_BG),
+        ("TEXTCOLOR",     (0, 0), (-1, 0),  colors.white),
+        ("FONTSIZE",      (0, 0), (-1, -1), 9),
+        ("GRID",          (0, 0), (-1, -1), 0.5, _TBL_BORDER),
+        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+        ("ROWBACKGROUNDS",(0, 1), (-1, -1), [colors.white, _TBL_EVEN_BG]),
         ("TOPPADDING",    (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
         ("LEFTPADDING",   (0, 0), (-1, -1), 6),
         ("RIGHTPADDING",  (0, 0), (-1, -1), 6),
-    ]
-    tbl.setStyle(TableStyle(ts))
+    ]))
     return tbl
+
+
+# ── HTML → Flowable 변환 ─────────────────────────────────────────────────
+def _safe(text: str) -> str:
+    return text.replace("&", "&amp;")
 
 
 def _node_to_flowables(node, styles: dict, story: list) -> None:
     if isinstance(node, NavigableString):
         text = str(node).strip()
         if text:
-            story.append(Paragraph(text.replace("&", "&amp;"), styles["body"]))
+            story.append(Paragraph(_safe(text), styles["body"]))
         return
 
     tag = node.name
@@ -170,13 +159,12 @@ def _node_to_flowables(node, styles: dict, story: list) -> None:
         return
 
     if tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
-        text = node.get_text(strip=True).replace("&", "&amp;")
-        story.append(Paragraph(text, styles[tag]))
+        story.append(Paragraph(_safe(node.get_text(strip=True)), styles[tag]))
 
     elif tag == "p":
-        text = node.get_text().replace("\u00a0", " ").strip().replace("&", "&amp;")
+        text = node.get_text().replace("\u00a0", " ").strip()
         if text:
-            story.append(Paragraph(text, styles["body"]))
+            story.append(Paragraph(_safe(text), styles["body"]))
 
     elif tag in ("pre", "code"):
         for line in node.get_text().splitlines():
@@ -195,13 +183,19 @@ def _node_to_flowables(node, styles: dict, story: list) -> None:
     elif tag in ("ul", "ol"):
         for i, li in enumerate(node.find_all("li", recursive=False)):
             prefix = "\u2022" if tag == "ul" else f"{i + 1}."
-            text = f"{prefix}  {li.get_text(strip=True).replace('&', '&amp;')}"
-            story.append(Paragraph(text, styles["bullet"]))
+            story.append(
+                Paragraph(
+                    f"{prefix}\u00a0\u00a0{_safe(li.get_text(strip=True))}",
+                    styles["bullet"],
+                )
+            )
 
     elif tag == "hr":
-        story.append(HRFlowable(width="100%", thickness=0.5,
-                                color=colors.HexColor("#DDDDDD"),
-                                spaceAfter=6, spaceBefore=6))
+        story.append(HRFlowable(
+            width="100%", thickness=0.5,
+            color=colors.HexColor("#DDDDDD"),
+            spaceAfter=6, spaceBefore=6,
+        ))
 
     else:
         for child in node.children:
@@ -217,8 +211,7 @@ class PdfConverter(IConverter):
                 "pip install reportlab 을 실행해 주세요."
             )
 
-        font = _register_korean_font()
-        font_bold = globals()["_font_bold"]
+        font, font_bold = _register_korean_font()
         styles = _make_styles(font, font_bold)
 
         doc = SimpleDocTemplate(
@@ -228,12 +221,10 @@ class PdfConverter(IConverter):
             topMargin=20 * mm, bottomMargin=20 * mm,
         )
 
-        story = []
+        story: list = []
         for page in pages:
             lvl = f"h{min(page.depth + 1, 6)}"
-            story.append(Paragraph(
-                page.title.replace("&", "&amp;"), styles[lvl]
-            ))
+            story.append(Paragraph(_safe(page.title), styles[lvl]))
             soup = clean(BeautifulSoup(page.html_body, "html.parser"))
             for child in soup.children:
                 _node_to_flowables(child, styles, story)
