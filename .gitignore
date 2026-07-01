@@ -3,3 +3,4 @@ venv/
 dist/
 *.env
 .env
+*.spec
