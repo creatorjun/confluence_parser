@@ -5,8 +5,9 @@ from pathlib import Path
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
-import config
-from worker import ConvertWorker
+from application.download_worker import DownloadWorker
+from domain.ports import IConverter, ICredentialStore, IPageRepository
+from domain.use_cases import DownloadUseCase
 
 
 class MainViewModel(QObject):
@@ -25,26 +26,31 @@ class MainViewModel(QObject):
         "pdf":  ".pdf",
     }
 
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        credential_store: ICredentialStore,
+        converters: dict[str, IConverter],
+        repo: IPageRepository,
+        parent: QObject | None = None,
+    ) -> None:
         super().__init__(parent)
-        self._worker: ConvertWorker | None = None
-        self._running = False
+        self._cred_store  = credential_store
+        self._converters  = converters
+        self._repo        = repo
+        self._worker: DownloadWorker | None = None
+        self._running     = False
 
     @property
     def has_credentials(self) -> bool:
-        return bool(
-            config.get("CONFLUENCE_EMAIL")
-            and config.get("CONFLUENCE_API_TOKEN")
-        )
+        email, token = self._cred_store.load()
+        return bool(email and token)
 
     @property
     def is_running(self) -> bool:
         return self._running
 
     def default_output_dir(self) -> str:
-        docs = Path.home() / "Documents" / "Confluence"
-        docs.mkdir(parents=True, exist_ok=True)
-        return str(docs)
+        return str(Path.home() / "Documents" / "Confluence")
 
     def extension_for(self, fmt_index: int) -> str:
         return self.FORMAT_EXT.get(self.FORMAT_KEYS[fmt_index], ".md")
@@ -62,14 +68,24 @@ class MainViewModel(QObject):
         if self._running:
             return
         fmt = self.FORMAT_KEYS[fmt_index]
+        converter = self._converters[fmt]
+        ext = self.FORMAT_EXT[fmt]
+
+        use_case = DownloadUseCase(
+            repo=self._repo,
+            converter=converter,
+            credential_store=self._cred_store,
+            file_extension=ext,
+        )
+
         self._set_running(True)
         self.log_appended.emit(
-            f"\u25b6 변환 시작 — 형식: {fmt.upper()} • "
+            f"\u25b6 변환 시작 \u2014 형식: {fmt.upper()} \u2022 "
             f"하위문서: {'포함' if include_children else '미포함'}"
         )
         self.log_appended.emit(f"   URL: {url}")
 
-        self._worker = ConvertWorker(url, include_children, fmt, output_dir)
+        self._worker = DownloadWorker(use_case, url, include_children, output_dir)
         self._worker.log.connect(self.log_appended)
         self._worker.progress.connect(self.progress_changed)
         self._worker.finished.connect(self._on_worker_finished)
