@@ -94,14 +94,13 @@ class MainViewModel(QObject):
         if self._running:
             return
 
-        self._settings_store.save({
+        new_settings = {
             "fmt_index":        fmt_index,
             "include_children": include_children,
             "output_dir":       output_dir,
-        })
-        self._settings["fmt_index"]        = fmt_index
-        self._settings["include_children"] = include_children
-        self._settings["output_dir"]        = output_dir
+        }
+        self._settings_store.save(new_settings)
+        self._settings = new_settings
 
         fmt       = self.FORMAT_KEYS[fmt_index]
         converter = self._converters[fmt]
