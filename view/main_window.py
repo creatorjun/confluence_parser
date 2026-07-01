@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (
     QSizePolicy, QSpacerItem,
 )
 
-from domain.ports import ICredentialStore
 from view.settings_dialog import SettingsDialog
 from view.theme import ACCENT, TEXT_SEC, HDR_BG, BORDER
 from view.widgets import app_icon, make_divider, make_label, make_btn
@@ -29,7 +28,6 @@ class MainWindow(QMainWindow):
         self.resize(940, 720)
 
         self._vm = viewmodel
-        self._cred_store: ICredentialStore = viewmodel._cred_store
         self._bind_viewmodel()
         self._build_ui()
         self._refresh_credentials(self._vm.has_credentials)
@@ -98,9 +96,7 @@ class MainWindow(QMainWindow):
         grid.setContentsMargins(14, 20, 14, 14)
         grid.setColumnStretch(1, 1)
 
-        _cap = lambda t: self._cap_label(t)
-
-        grid.addWidget(_cap("Confluence 페이지 URL"), 0, 0, 1, 5)
+        grid.addWidget(self._cap_label("Confluence 페이지 URL"), 0, 0, 1, 5)
 
         self.le_url = QLineEdit()
         self.le_url.setPlaceholderText(
@@ -109,7 +105,7 @@ class MainWindow(QMainWindow):
         self.le_url.setFixedHeight(40)
         grid.addWidget(self.le_url, 1, 0, 1, 5)
 
-        grid.addWidget(_cap("출력 형식"), 2, 0)
+        grid.addWidget(self._cap_label("출력 형식"), 2, 0)
 
         self.cb_format = QComboBox()
         self.cb_format.addItems([
@@ -120,7 +116,6 @@ class MainWindow(QMainWindow):
         ])
         self.cb_format.setFixedHeight(40)
         self.cb_format.setFixedWidth(200)
-        # 저장된 설정 복원
         self.cb_format.setCurrentIndex(self._vm.saved_fmt_index)
         grid.addWidget(self.cb_format, 2, 1)
 
@@ -133,7 +128,7 @@ class MainWindow(QMainWindow):
             2, 3,
         )
 
-        grid.addWidget(_cap("저장 폴더"), 3, 0)
+        grid.addWidget(self._cap_label("저장 폴더"), 3, 0)
 
         self.le_out = QLineEdit(self._vm.saved_output_dir)
         self.le_out.setFixedHeight(40)
@@ -215,7 +210,7 @@ class MainWindow(QMainWindow):
         return lbl
 
     def _open_settings(self) -> None:
-        dlg = SettingsDialog(self._cred_store, self)
+        dlg = SettingsDialog(self._vm.credential_store, self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self._vm.notify_credentials_updated()
             self._append_log("✅ 인증 정보가 저장되었습니다.")
