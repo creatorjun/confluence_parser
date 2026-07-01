@@ -36,8 +36,8 @@ from view.theme import QSS
 def main() -> None:
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
-    app.setApplicationName("Confluence Parser")
-    app.setOrganizationName("confluence-parser")
+    app.setApplicationName("Seculayer Document Parser")
+    app.setOrganizationName("Seculayer")
     app.setStyleSheet(QSS)
 
     win = MainWindow()

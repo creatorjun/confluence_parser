@@ -22,7 +22,7 @@ from view.settings_dialog import SettingsDialog
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Confluence Parser")
+        self.setWindowTitle("Seculayer Document Parser")
         self.setWindowIcon(app_icon())
         self.setMinimumSize(800, 640)
         self.resize(940, 720)
@@ -54,7 +54,7 @@ class MainWindow(QMainWindow):
 
         content = QWidget()
         cl = QVBoxLayout(content)
-        cl.setContentsMargins(28, 20, 28, 16)
+        cl.setContentsMargins(28, 16, 28, 16)
         cl.setSpacing(16)
         cl.addWidget(self._make_input_group())
         cl.addLayout(self._make_action_row())
