@@ -1,10 +1,8 @@
 # worker.py
-"""
-QThread 기반 백그라운드 워커
-- UI 블로킹 없이 Confluence 수집 + 변환 수행
-- 시그널로 진행상황/완료/에러 전달
-"""
 from __future__ import annotations
+
+import re
+from pathlib import Path
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
@@ -12,25 +10,28 @@ from confluence_client import ConfluenceClient
 import config
 
 
+def _safe_filename(name: str) -> str:
+    return re.sub(r'[\\/:*?"<>|]', "_", name).strip()
+
+
 class ConvertWorker(QThread):
-    # 시그널 정의
-    log      = pyqtSignal(str)   # 진행 로그 한 줄
-    progress = pyqtSignal(int)   # 0~100 퍼센트
-    finished = pyqtSignal(str)   # 완료 시 출력 파일 경로
-    error    = pyqtSignal(str)   # 에러 메시지
+    log      = pyqtSignal(str)
+    progress = pyqtSignal(int)
+    finished = pyqtSignal(str)
+    error    = pyqtSignal(str)
 
     def __init__(
         self,
         page_url: str,
         include_children: bool,
-        output_format: str,   # "md" | "docx" | "xlsx" | "pdf"
-        output_path: str,
+        output_format: str,
+        output_dir: str,
     ):
         super().__init__()
         self.page_url         = page_url
         self.include_children = include_children
         self.output_format    = output_format
-        self.output_path      = output_path
+        self.output_dir       = output_dir
 
     def run(self) -> None:
         try:
@@ -51,14 +52,12 @@ class ConvertWorker(QThread):
 
         client = ConfluenceClient(email, api_token)
 
-        # URL 파싱
         self.log.emit(f"URL 파싱 중: {self.page_url}")
         base_url, page_id = client.parse_url(self.page_url)
         self.log.emit(f"Base URL : {base_url}")
         self.log.emit(f"Page ID  : {page_id}")
         self.progress.emit(5)
 
-        # 페이지 수집
         self.log.emit("페이지 수집 중...")
         pages = client.collect_pages(
             base_url, page_id,
@@ -68,7 +67,12 @@ class ConvertWorker(QThread):
         self.log.emit(f"총 {len(pages)}개 페이지 수집 완료")
         self.progress.emit(50)
 
-        # 변환
+        root_title = pages[0][1] if pages else "output"
+        ext_map = {"md": ".md", "docx": ".docx", "xlsx": ".xlsx", "pdf": ".pdf"}
+        ext = ext_map.get(self.output_format.lower(), ".md")
+        filename = _safe_filename(root_title) + ext
+        output_path = str(Path(self.output_dir) / filename)
+
         self.log.emit(f"{self.output_format.upper()} 변환 중...")
         fmt = self.output_format.lower()
         if fmt == "md":
@@ -83,7 +87,8 @@ class ConvertWorker(QThread):
             self.error.emit(f"지원하지 않는 형식: {self.output_format}")
             return
 
-        convert(pages, self.output_path)
+        Path(self.output_dir).mkdir(parents=True, exist_ok=True)
+        convert(pages, output_path)
         self.progress.emit(100)
-        self.log.emit(f"완료: {self.output_path}")
-        self.finished.emit(self.output_path)
+        self.log.emit(f"완료: {output_path}")
+        self.finished.emit(output_path)

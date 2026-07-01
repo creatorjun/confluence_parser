@@ -1,8 +1,4 @@
-"""ViewModel — 메인 화면 상태 및 변환 로직.
-
-View 는 이 클래스의 시그널만 구독하고,
-직접 worker / config / client 를 알지 못한다.
-"""
+# viewmodel/main_viewmodel.py
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,15 +10,13 @@ from worker import ConvertWorker
 
 
 class MainViewModel(QObject):
-    # ── View 로 내보내는 시그널 ──────────────────────────
-    log_appended   = pyqtSignal(str)   # 로그 한 줄
-    progress_changed = pyqtSignal(int) # 0~100
-    convert_finished = pyqtSignal(str) # 완료된 파일 경로
-    convert_error    = pyqtSignal(str) # 에러 메시지
-    running_changed  = pyqtSignal(bool)# True=변환중, False=대기
-    credentials_changed = pyqtSignal(bool)  # True=설정 완료
+    log_appended        = pyqtSignal(str)
+    progress_changed    = pyqtSignal(int)
+    convert_finished    = pyqtSignal(str)
+    convert_error       = pyqtSignal(str)
+    running_changed     = pyqtSignal(bool)
+    credentials_changed = pyqtSignal(bool)
 
-    # ── 포맷 목록 (index → key) ──────────────────────────
     FORMAT_KEYS = ["md", "docx", "xlsx", "pdf"]
     FORMAT_EXT  = {
         "md":   ".md",
@@ -36,7 +30,6 @@ class MainViewModel(QObject):
         self._worker: ConvertWorker | None = None
         self._running = False
 
-    # ── 공개 상태 ────────────────────────────────────────
     @property
     def has_credentials(self) -> bool:
         return bool(
@@ -48,16 +41,15 @@ class MainViewModel(QObject):
     def is_running(self) -> bool:
         return self._running
 
-    def default_output_path(self, fmt_index: int) -> str:
-        ext = self.FORMAT_EXT.get(self.FORMAT_KEYS[fmt_index], ".md")
-        return str(Path.home() / f"output{ext}")
+    def default_output_dir(self) -> str:
+        docs = Path.home() / "Documents" / "Confluence"
+        docs.mkdir(parents=True, exist_ok=True)
+        return str(docs)
 
     def extension_for(self, fmt_index: int) -> str:
         return self.FORMAT_EXT.get(self.FORMAT_KEYS[fmt_index], ".md")
 
-    # ── 커맨드 ──────────────────────────────────────────
     def notify_credentials_updated(self) -> None:
-        """SettingsDialog 저장 후 View 가 호출."""
         self.credentials_changed.emit(self.has_credentials)
 
     def start_convert(
@@ -65,19 +57,19 @@ class MainViewModel(QObject):
         url: str,
         include_children: bool,
         fmt_index: int,
-        output_path: str,
+        output_dir: str,
     ) -> None:
         if self._running:
             return
         fmt = self.FORMAT_KEYS[fmt_index]
         self._set_running(True)
         self.log_appended.emit(
-            f"▶ 변환 시작 — 형식: {fmt.upper()} • "
+            f"\u25b6 변환 시작 — 형식: {fmt.upper()} • "
             f"하위문서: {'포함' if include_children else '미포함'}"
         )
         self.log_appended.emit(f"   URL: {url}")
 
-        self._worker = ConvertWorker(url, include_children, fmt, output_path)
+        self._worker = ConvertWorker(url, include_children, fmt, output_dir)
         self._worker.log.connect(self.log_appended)
         self._worker.progress.connect(self.progress_changed)
         self._worker.finished.connect(self._on_worker_finished)
@@ -91,7 +83,6 @@ class MainViewModel(QObject):
             self.log_appended.emit("⏹ 변환이 중단되었습니다.")
             self._set_running(False)
 
-    # ── 내부 ────────────────────────────────────────────
     def _set_running(self, value: bool) -> None:
         self._running = value
         self.running_changed.emit(value)

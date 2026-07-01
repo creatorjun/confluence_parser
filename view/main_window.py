@@ -121,7 +121,6 @@ class MainWindow(QMainWindow):
         ])
         self.cb_format.setFixedHeight(40)
         self.cb_format.setFixedWidth(200)
-        self.cb_format.currentIndexChanged.connect(self._on_format_changed)
         grid.addWidget(self.cb_format, 2, 1)
 
         self.chk_children = QCheckBox("하위 문서 포함")
@@ -133,15 +132,22 @@ class MainWindow(QMainWindow):
             2, 3,
         )
 
-        grid.addWidget(_cap("저장 경로"), 3, 0)
+        grid.addWidget(_cap("저장 폴더"), 3, 0)
 
-        self.le_out = QLineEdit(self._vm.default_output_path(0))
+        self.le_out = QLineEdit(self._vm.default_output_dir())
         self.le_out.setFixedHeight(40)
+        self.le_out.setPlaceholderText("저장할 폴더를 선택하세요")
         grid.addWidget(self.le_out, 3, 1, 1, 3)
 
         btn_browse = make_btn("📂  찾기", "btn_secondary", height=40, min_width=88)
         btn_browse.clicked.connect(self._browse)
         grid.addWidget(btn_browse, 3, 4)
+
+        self._lbl_filename_hint = QLabel("파일명: 페이지 제목에서 자동 생성됩니다")
+        self._lbl_filename_hint.setStyleSheet(
+            f"font-size:11px; color:{TEXT_SEC}; background:transparent;"
+        )
+        grid.addWidget(self._lbl_filename_hint, 4, 1, 1, 4)
 
         return grp
 
@@ -213,28 +219,14 @@ class MainWindow(QMainWindow):
             self._vm.notify_credentials_updated()
             self._append_log("✅ 인증 정보가 저장되었습니다.")
 
-    def _on_format_changed(self, index: int) -> None:
-        ext = self._vm.extension_for(index)
-        self.le_out.setText(
-            str(Path(self.le_out.text()).with_suffix(ext))
-        )
-
     def _browse(self) -> None:
-        idx = self.cb_format.currentIndex()
-        ext = self._vm.extension_for(idx)
-        fmt_names = {
-            ".md": "Markdown (*.md)",
-            ".docx": "Word 문서 (*.docx)",
-            ".xlsx": "Excel 문서 (*.xlsx)",
-            ".pdf": "PDF (*.pdf)",
-        }
-        filt = fmt_names.get(ext, "All (*)")
-        path, _ = QFileDialog.getSaveFileName(
-            self, "저장 위치 선택",
-            str(Path.home() / f"output{ext}"), filt,
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "저장 폴더 선택",
+            self.le_out.text() or str(Path.home()),
         )
-        if path:
-            self.le_out.setText(path)
+        if folder:
+            self.le_out.setText(folder)
 
     def _start(self) -> None:
         url = self.le_url.text().strip()
@@ -245,11 +237,12 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "입력 오류",
                                 "URL은 http:// 또는 https://로 시작해야 합니다.")
             return
+        output_dir = self.le_out.text().strip() or self._vm.default_output_dir()
         self._vm.start_convert(
             url=url,
             include_children=self.chk_children.isChecked(),
             fmt_index=self.cb_format.currentIndex(),
-            output_path=self.le_out.text().strip(),
+            output_dir=output_dir,
         )
 
     def _append_log(self, msg: str) -> None:
