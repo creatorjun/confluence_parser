@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
 )
 
 from domain.ports import ICredentialStore
-from view.theme import ACCENT
+from view.theme import ACCENT, TEXT_HINT
 from view.widgets import app_icon, make_divider, make_label, make_btn
 from viewmodel.settings_viewmodel import SettingsViewModel
 
@@ -17,7 +17,7 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("인증 설정 — Confluence Parser")
         self.setWindowIcon(app_icon())
-        self.setMinimumWidth(460)
+        self.setMinimumWidth(480)
 
         self._vm = SettingsViewModel(credential_store, self)
         self._vm.saved.connect(self.accept)
@@ -80,10 +80,29 @@ class SettingsDialog(QDialog):
 
         layout.addSpacing(8)
         layout.addWidget(make_divider())
+        layout.addSpacing(4)
+
+        # 설정 폴더 경로 힙트
+        path_hint = QLabel(f"📂 설정 저장 위치: {self._vm.config_dir}")
+        path_hint.setStyleSheet(
+            f"font-size:11px; color:{TEXT_HINT}; background:transparent;"
+        )
+        path_hint.setWordWrap(True)
+        layout.addWidget(path_hint)
+
         layout.addSpacing(8)
 
         btn_row = QHBoxLayout()
+        # 좌측: 설정 폴더 열기
+        btn_open_folder = make_btn(
+            "📂  설정 폴더 열기", "btn_secondary", height=36, min_width=130
+        )
+        btn_open_folder.clicked.connect(self._vm.open_config_folder)
+        btn_row.addWidget(btn_open_folder)
+
         btn_row.addStretch()
+
+        # 우측: 취소 / 저장
         btn_cancel = make_btn("취소", "btn_secondary", height=36, min_width=88)
         btn_cancel.clicked.connect(self.reject)
         btn_save = make_btn("저장", height=36, min_width=88)
