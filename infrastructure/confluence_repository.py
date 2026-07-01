@@ -18,38 +18,38 @@ def _friendly_error(resp: Response, page_id: str = "") -> str:
 
     if code == 401:
         return (
-            f"[\u26d4 401 \uc778\uc99d \uc2e4\ud328{target}]\n"
-            "\uc774\uba54\uc77c \ub610\ub294 API Token\uc774 \uc62c\ubc14\ub974\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.\n"
-            "\u2699 \uc124\uc815 \ubc84\ud2bc\uc5d0\uc11c \uc778\uc99d \uc815\ubcf4\ub97c \ub2e4\uc2dc \uc785\ub825\ud574 \uc8fc\uc138\uc694."
+            f"[⛔ 401 인증 실패{target}]\n"
+            "이메일 또는 API Token이 올바르지 않습니다.\n"
+            "⚙ 설정 버튼에서 인증 정보를 다시 입력해 주세요."
         )
     if code == 403:
         return (
-            f"[\U0001f6ab 403 \uc811\uadfc \uad8c\ud55c \uc5c6\uc74c{target}]\n"
-            "\ud604\uc7ac \uacc4\uc815\uc740 \uc774 \ud398\uc774\uc9c0\ub97c \ubcfc \uc218 \uc788\ub294 \uad8c\ud55c\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.\n"
-            "\ud655\uc778\ud560 \uc0ac\ud56d:\n"
-            "  \u2022 Confluence \uc5d0\uc11c \ud574\ub2f9 \ud398\uc774\uc9c0 \ub610\ub294 \uc2a4\ud398\uc774\uc2a4\uc758 \ubcf4\uae30 \uad8c\ud55c\uc774 \uc788\ub294\uc9c0 \ud655\uc778\n"
-            "  \u2022 \ube44\uacf5\uac1c \uc2a4\ud398\uc774\uc2a4\uc758 \uacbd\uc6b0 \uad00\ub9ac\uc790\uc5d0\uac8c \uad8c\ud55c \uc694\uccad \ud544\uc694"
+            f"[🚫 403 접근 권한 없음{target}]\n"
+            "현재 계정은 이 페이지를 볼 수 있는 권한이 없습니다.\n"
+            "확인할 사항:\n"
+            "  • Confluence 에서 해당 페이지 또는 스페이스의 보기 권한이 있는지 확인\n"
+            "  • 비공개 스페이스의 경우 관리자에게 권한 요청 필요"
         )
     if code == 404:
         return (
-            f"[\U0001f50d 404 \ud398\uc774\uc9c0\ub97c \ucc3e\uc744 \uc218 \uc5c6\uc74c{target}]\n"
-            "Page ID\uac00 \uc874\uc7ac\ud558\uc9c0 \uc54a\uac70\ub098 \uc774\ubbf8 \uc0ad\uc81c\ub41c \ud398\uc774\uc9c0\uc785\ub2c8\ub2e4.\n"
-            "URL\uc774 \uc62c\ubc14\ub978\uc9c0 \ub2e4\uc2dc \ud655\uc778\ud574 \uc8fc\uc138\uc694."
+            f"[🔍 404 페이지를 찾을 수 없음{target}]\n"
+            "Page ID가 존재하지 않거나 이미 삭제된 페이지입니다.\n"
+            "URL이 올바른지 다시 확인해 주세요."
         )
     if code == 429:
         return (
-            f"[\u23f3 429 \uc694\uccad \ud55c\ub3c4 \ucd08\uacfc{target}]\n"
-            "Confluence API \ud638\ucd9c \ud69f\uc218 \uc81c\ud55c\uc5d0 \uac78\ub838\uc2b5\ub2c8\ub2e4.\n"
-            "\uc78a\uc2dc \ud6c4 \ub2e4\uc2dc \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694."
+            f"[⏳ 429 요청 한도 초과{target}]\n"
+            "Confluence API 호출 횟수 제한에 걸렸습니다.\n"
+            "잠시 후 다시 시도해 주세요."
         )
     if 500 <= code < 600:
         return (
-            f"[\U0001f4a5 {code} Confluence \uc11c\ubc84 \uc624\ub958{target}]\n"
-            "Confluence \uc11c\ubc84\uc5d0\uc11c \uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4.\n"
-            "\uc78a\uc2dc \ud6c4 \ub2e4\uc2dc \uc2dc\ub3c4\ud558\uac70\ub098 Confluence \uc0c1\ud0dc\ub97c \ud655\uc778\ud574 \uc8fc\uc138\uc694."
+            f"[💥 {code} Confluence 서버 오류{target}]\n"
+            "Confluence 서버에서 오류가 발생했습니다.\n"
+            "잠시 후 다시 시도하거나 Confluence 상태를 확인해 주세요."
         )
     return (
-        f"[HTTP {code} \uc624\ub958{target}]\n"
+        f"[HTTP {code} 오류{target}]\n"
         f"{resp.reason}\n"
         f"URL: {resp.url}"
     )
@@ -82,8 +82,8 @@ class ConfluenceRepository(IPageRepository):
             return (base.group(1) if base else ""), page_id
 
         raise ValueError(
-            "URL\uc5d0\uc11c page_id\ub97c \ucc3e\uc744 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.\n"
-            "\uc9c0\uc6d0 \ud615\uc2dd:\n"
+            "URL에서 page_id를 찾을 수 없습니다.\n"
+            "지원 형식:\n"
             "  .../wiki/spaces/SPACE/pages/123456/...\n"
             "  .../wiki/pages/viewpage.action?pageId=123456"
         )
