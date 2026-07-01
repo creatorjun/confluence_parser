@@ -8,6 +8,9 @@ from PyQt6.QtCore import QObject, pyqtSignal
 from application.download_worker import DownloadWorker
 from domain.ports import IAppSettingsStore, IConverter, ICredentialStore, IPageRepository
 from domain.use_cases import DownloadUseCase
+from infrastructure.app_logger import get_logger
+
+_log = get_logger(__name__)
 
 
 class MainViewModel(QObject):
@@ -41,9 +44,8 @@ class MainViewModel(QObject):
         self._settings_store = settings_store
         self._worker: DownloadWorker | None = None
         self._running        = False
-
-        # 앱 시작 시 저장된 설정 복원
         self._settings: dict = self._settings_store.load()
+        _log.info("MainViewModel 초기화 완료")
 
     # ── 설정 프로퍼티 ────────────────────────────────────
     @property
@@ -58,7 +60,7 @@ class MainViewModel(QObject):
     def saved_output_dir(self) -> str:
         return self._settings.get("output_dir", "") or self.default_output_dir()
 
-    # ── 기존 프로퍼티 ────────────────────────────────────
+    # ── 기본 프로퍼티 ────────────────────────────────────
     @property
     def has_credentials(self) -> bool:
         email, token = self._cred_store.load()
@@ -88,7 +90,6 @@ class MainViewModel(QObject):
         if self._running:
             return
 
-        # 변환 시작 전 설정 저장
         self._settings_store.save({
             "fmt_index":        fmt_index,
             "include_children": include_children,
@@ -110,14 +111,16 @@ class MainViewModel(QObject):
         )
 
         self._set_running(True)
-        self.log_appended.emit(
+        msg_start = (
             f"\u25b6 변환 시작 \u2014 형식: {fmt.upper()} \u2022 "
             f"하위문서: {'포함' if include_children else '미포함'}"
         )
+        _log.info("[convert] %s | url=%s | output=%s", msg_start, url, output_dir)
+        self.log_appended.emit(msg_start)
         self.log_appended.emit(f"   URL: {url}")
 
         self._worker = DownloadWorker(use_case, url, include_children, output_dir)
-        self._worker.log.connect(self.log_appended)
+        self._worker.log.connect(self._on_worker_log)
         self._worker.progress.connect(self.progress_changed)
         self._worker.finished.connect(self._on_worker_finished)
         self._worker.error.connect(self._on_worker_error)
@@ -127,8 +130,14 @@ class MainViewModel(QObject):
         if self._worker and self._worker.isRunning():
             self._worker.terminate()
             self._worker.wait()
+            _log.warning("[convert] 사용자 중단")
             self.log_appended.emit("⏹ 변환이 중단되었습니다.")
             self._set_running(False)
+
+    # ── 내부 핸들러 ─────────────────────────────────────────
+    def _on_worker_log(self, msg: str) -> None:
+        _log.debug("[worker] %s", msg)
+        self.log_appended.emit(msg)
 
     def _set_running(self, value: bool) -> None:
         self._running = value
@@ -136,10 +145,12 @@ class MainViewModel(QObject):
 
     def _on_worker_finished(self, path: str) -> None:
         self._set_running(False)
+        _log.info("[convert] 완료 → %s", path)
         self.log_appended.emit(f"\n✅ 변환 완료  →  {path}")
         self.convert_finished.emit(path)
 
     def _on_worker_error(self, msg: str) -> None:
         self._set_running(False)
+        _log.error("[convert] 오류: %s", msg)
         self.log_appended.emit(f"\n❌ 오류: {msg}")
         self.convert_error.emit(msg)
