@@ -2,7 +2,7 @@ requests
 beautifulsoup4
 python-docx
 openpyxl
-weasyprint
+reportlab
 python-dotenv
 PyQt6
 platformdirs
