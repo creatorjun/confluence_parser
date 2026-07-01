@@ -47,7 +47,11 @@ class MainViewModel(QObject):
         self._settings: dict = self._settings_store.load()
         _log.info("MainViewModel 초기화 완료")
 
-    # ── 설정 프로퍼티 ────────────────────────────────────
+    # ── 공개 프로퍼티 ────────────────────────────────────
+    @property
+    def credential_store(self) -> ICredentialStore:
+        return self._cred_store
+
     @property
     def saved_fmt_index(self) -> int:
         return int(self._settings.get("fmt_index", 0))
