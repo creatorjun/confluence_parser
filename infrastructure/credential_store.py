@@ -2,13 +2,29 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 from domain.ports import ICredentialStore
 
-_ENV_PATH = Path(__file__).parent.parent / ".env"
+_APP_NAME = "SeculayerDocumentParser"
+
+
+def _resolve_env_path() -> Path:
+    if sys.platform == "win32":
+        base = Path(os.environ.get("APPDATA", Path.home()))
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Application Support"
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    env_dir = base / _APP_NAME
+    env_dir.mkdir(parents=True, exist_ok=True)
+    return env_dir / ".env"
+
+
+_ENV_PATH = _resolve_env_path()
 
 
 class EnvCredentialStore(ICredentialStore):
