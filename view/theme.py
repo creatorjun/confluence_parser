@@ -121,23 +121,18 @@ QPushButton:disabled {{ background: {ACCENT_DIS}; color: #fff; }}
 QPushButton#btn_secondary {{
     background: {SURFACE};
     color: {TEXT};
-    border-top: 1.5px solid {BORDER};
-    border-left: 1.5px solid {BORDER};
-    border-right: 1.5px solid {BORDER};
-    border-bottom: 2.5px solid {BORDER_BTM};
+    border: 1.5px solid {BORDER};
+    border-radius: 7px;
     font-weight: 500;
 }}
 QPushButton#btn_secondary:hover {{
     background: {SURFACE2};
-    border-top: 1.5px solid {BORDER_FOC};
-    border-left: 1.5px solid {BORDER_FOC};
-    border-right: 1.5px solid {BORDER_FOC};
-    border-bottom: 2.5px solid {ACCENT};
+    border: 1.5px solid {BORDER_FOC};
     color: {ACCENT};
 }}
 QPushButton#btn_secondary:pressed {{
     background: #E0EAFE;
-    border-bottom: 1.5px solid {ACCENT_P};
+    border: 1.5px solid {ACCENT_P};
 }}
 QPushButton#btn_secondary:disabled {{
     background: {SURFACE2};

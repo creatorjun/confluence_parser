@@ -68,9 +68,6 @@ class MainWindow(QMainWindow):
         panel = QWidget()
         panel.setObjectName("header_panel")
         panel.setFixedHeight(80)
-        panel.setStyleSheet(
-            f"background:{HDR_BG}; border-bottom:1px solid {BORDER};"
-        )
         layout = QHBoxLayout(panel)
         layout.setContentsMargins(24, 12, 20, 12)
         layout.setSpacing(6)
