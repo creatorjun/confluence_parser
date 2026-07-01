@@ -5,3 +5,4 @@ openpyxl
 pdfkit
 python-dotenv
 PyQt6
+platformdirs
