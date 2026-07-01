@@ -1,16 +1,14 @@
 # infrastructure/converters/html_cleaner.py
 from __future__ import annotations
 
-from bs4 import BeautifulSoup, NavigableString, Tag
+from bs4 import BeautifulSoup, Tag
 
 _REMOVE_TAGS = {
     "script", "style", "meta", "link", "noscript",
     "confluence-toc", "confluence-metadata",
 }
-_UNWRAP_TAGS = {
-    "span", "div", "section", "article", "main",
-    "header", "footer", "nav", "aside",
-}
+
+# 제거 대상 클래스: 내용은 유지하고 태그만 볚겨내는(unwrap) Confluence 래퍼 클래스
 _UNWRAP_CLASSES = {
     "confluence-information-macro",
     "confluence-information-macro-information",
@@ -27,18 +25,27 @@ _UNWRAP_CLASSES = {
     "aui-message",
 }
 
+# 클래스가 없을 때만 unwrap 하는 구조 태그
+_STRUCTURAL_TAGS = {"span", "div", "section", "article", "main", "header", "footer", "nav", "aside"}
+
 
 def clean(soup: BeautifulSoup) -> BeautifulSoup:
+    # 1단계: 불필요 태그 완전 제거
     for tag in soup.find_all(_REMOVE_TAGS):
         tag.decompose()
 
+    # 2단계: 래퍼 태그 unwrap
+    #   • Confluence 래퍼 클래스를 가진 태그 → 런타임에 상관없이 unwrap
+    #   • 구조 태그(랜덧, div 등)에 클래스가 없는 경우에만 unwrap
     for tag in soup.find_all(True):
         classes = set(tag.get("class") or [])
-        if tag.name in _UNWRAP_TAGS and not classes.intersection(_UNWRAP_CLASSES):
-            tag.unwrap()
-        elif classes.intersection(_UNWRAP_CLASSES):
+        has_unwrap_class = bool(classes & _UNWRAP_CLASSES)
+        is_bare_structural = tag.name in _STRUCTURAL_TAGS and not classes
+
+        if has_unwrap_class or is_bare_structural:
             tag.unwrap()
 
+    # 3단계: 필요한 속성만 단기
     for tag in soup.find_all(True):
         for attr in list(tag.attrs):
             if attr not in ("colspan", "rowspan", "href"):
@@ -50,7 +57,7 @@ def clean(soup: BeautifulSoup) -> BeautifulSoup:
 def is_code_table(tag: Tag) -> bool:
     classes = set(tag.get("class") or [])
     code_classes = {"code", "codeContent", "syntaxhighlighter", "highlight", "code-block"}
-    if classes.intersection(code_classes):
+    if classes & code_classes:
         return True
     rows = tag.find_all("tr")
     if len(rows) == 1:
@@ -58,7 +65,7 @@ def is_code_table(tag: Tag) -> bool:
         if len(cells) == 1:
             inner = cells[0]
             inner_classes = set(inner.get("class") or [])
-            if inner_classes.intersection(code_classes):
+            if inner_classes & code_classes:
                 return True
             if inner.find("pre") or inner.find("code"):
                 return True
@@ -72,10 +79,9 @@ def extract_code_lines(tag: Tag) -> str:
     code = tag.find("code")
     if code:
         return code.get_text()
-    rows = tag.find_all("tr")
-    lines = []
-    for row in rows:
-        for cell in row.find_all(["td", "th"]):
-            text = cell.get_text()
-            lines.append(text)
+    lines = [
+        cell.get_text()
+        for row in tag.find_all("tr")
+        for cell in row.find_all(["td", "th"])
+    ]
     return "\n".join(lines)
