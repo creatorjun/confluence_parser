@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup, NavigableString
 
 from domain.model import PageNode
 from domain.ports import IConverter
-from html_cleaner import clean, is_code_table, extract_code_lines
+from infrastructure.converters.html_cleaner import clean, is_code_table, extract_code_lines
 
 _CSS = """
 @charset "UTF-8";
@@ -90,7 +90,7 @@ class PdfConverter(IConverter):
         try:
             import pdfkit
         except ImportError:
-            raise RuntimeError("pdfkit가 설치되어 있지 않습니다: pip install pdfkit")
+            raise RuntimeError("우pdfkit가 설치되어 있지 않습니다: pip install pdfkit")
 
         body = []
         for page in pages:
