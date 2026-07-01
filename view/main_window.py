@@ -138,7 +138,7 @@ class MainWindow(QMainWindow):
         self.le_out.setPlaceholderText("저장할 폴더를 선택하세요")
         grid.addWidget(self.le_out, 3, 1, 1, 3)
 
-        btn_browse = make_btn("📂  찾기", "btn_secondary", height=40, min_width=88)
+        btn_browse = make_btn("📂  저장 폴더", "btn_secondary", height=40, min_width=88)
         btn_browse.clicked.connect(self._browse)
         grid.addWidget(btn_browse, 3, 4)
 
