@@ -22,6 +22,57 @@ try:
 except ImportError:
     _REPORTLAB_OK = False
 
+# ── 특수문자 안전 대체 테이블 ────────────────────────────────────────────────────
+# Courier 폰트가 렌더링 못 하는 박스 드로잉/특수 문자를 ASCII 돱가로 대체
+_CHAR_FALLBACK: dict[str, str] = {
+    # 박스 드로잉 (트리 구조)
+    "\u251c": "|",   # ├
+    "\u2514": "+",   # └
+    "\u2502": "|",   # │
+    "\u2500": "-",   # ─
+    "\u2510": "+",   # ┐
+    "\u250c": "+",   # ┌
+    "\u2518": "+",   # ┘
+    "\u253c": "+",   # ┼
+    "\u252c": "+",   # ┬
+    "\u2534": "+",   # ┴
+    "\u2524": "|",   # ┤
+    "\u251c\u2500\u2500": "|--",  # ├──
+    "\u2514\u2500\u2500": "+--",  # └──
+    # 화살표 류
+    "\u2192": "->",  # →
+    "\u2190": "<-",  # ←
+    "\u2191": "^",   # ↑
+    "\u2193": "v",   # ↓
+    "\u21d2": "=>",  # ⇒
+    "\u21d0": "<=",  # ⇐
+    # 체크/실패 마크
+    "\u2705": "[OK]",   # ✅
+    "\u274c": "[X]",    # ❌
+    "\u26a0": "[!]",    # ⚠
+    "\u2714": "[v]",    # ✔
+    "\u2718": "[x]",    # ✘
+    # 기타 자주 쓰이는 유니코드
+    "\u00a0": " ",   # NBSP
+    "\u2022": "*",   # • bullet
+    "\u25b6": ">",   # ▶
+    "\u23f9": "[]",  # ⏹
+    "\u2014": "--",  # — em dash
+    "\u2013": "-",   # – en dash
+    "\u2026": "...", # …
+}
+
+
+def _safe_code(text: str) -> str:
+    """코드 블록 텍스트를 Courier 안전 문자열로 변환.
+    한글 폰트 사용 시에는 불필요하지만,
+    Courier 보종을 위해 유니코드 문자를 충분히 대체한다.
+    """
+    for char, replacement in _CHAR_FALLBACK.items():
+        text = text.replace(char, replacement)
+    return text
+
+
 # ── 폰트 등록 (Windows/macOS/Linux 한글 지원) ───────────────────────────
 _KOREAN_CANDIDATES = [
     ("C:/Windows/Fonts/malgun.ttf",   "MalgunGothic",
@@ -44,7 +95,7 @@ def _register_korean_font() -> tuple[str, str]:
         except Exception:
             continue
 
-        registered_bold = name  # 볼드 없으면 일반 폰트로 폴백
+        registered_bold = name
         if bold_path and bold_name and os.path.exists(bold_path):
             try:
                 pdfmetrics.registerFont(TTFont(bold_name, bold_path))
@@ -58,11 +109,6 @@ def _register_korean_font() -> tuple[str, str]:
 
 # ── 스타일 빌더 ────────────────────────────────────────────────────────
 def _make_styles(font: str, font_bold: str) -> dict:
-    """주어진 폰트로 ParagraphStyle 딕셔너리 생성.
-
-    내부 헬퍼 ps()는 별도의 fn 인수로 폰트명을 받으므로
-    fontName 키워드가 **kw 에 중복 전달되는 문제가 없다.
-    """
     def ps(name: str, fn: str | None = None, **kw) -> ParagraphStyle:
         return ParagraphStyle(name, fontName=fn or font, **kw)
 
@@ -88,11 +134,12 @@ def _make_styles(font: str, font_bold: str) -> dict:
         "body":   ps("Body",   fontSize=10, leading=16, spaceAfter=4),
         "bullet": ps("Bullet", fontSize=10, leading=16,
                      leftIndent=16, bulletIndent=6, spaceAfter=2),
-        # fn="Courier" 사용 — font 기본값과 충돌 없음
-        "code":   ps("Code",   fn="Courier", fontSize=9, leading=13,
+        # 코드 블록: 한글 폰트를 사용하여 특수문자 깨짐 방지
+        # Courier 를 쓰면 박스드로잉 문자(├─└ 등)가 깨질 수 있음
+        "code":   ps("Code",   fontSize=9, leading=13,
                      backColor=colors.HexColor("#F4F4F4"),
                      leftIndent=12, rightIndent=4,
-                     spaceBefore=4, spaceAfter=4),
+                     spaceBefore=2, spaceAfter=2),
         "th":     ps("TH",     fn=font_bold, fontSize=9, leading=12,
                      textColor=colors.white),
         "td":     ps("TD",     fontSize=9, leading=12),
@@ -116,7 +163,7 @@ def _table_flowable(node: Tag, styles: dict):
         is_hdr = any(c.name == "th" for c in cells) or ri == 0
         cell_style = styles["th"] if is_hdr else styles["td"]
         data.append([
-            Paragraph(c.get_text(strip=True).replace("&", "&amp;"), cell_style)
+            Paragraph(_safe(c.get_text(strip=True)), cell_style)
             for c in cells
         ])
 
@@ -142,11 +189,28 @@ def _table_flowable(node: Tag, styles: dict):
     return tbl
 
 
-# ── HTML → Flowable 변환 ─────────────────────────────────────────────────
+# ── 공통 헬퍼 ─────────────────────────────────────────────────────────────
 def _safe(text: str) -> str:
-    return text.replace("&", "&amp;")
+    """ReportLab Paragraph XML 특수문자 이스케이프."""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def _code_lines(text: str, style: ParagraphStyle) -> list:
+    """코드 텍스트를 줄단위 Paragraph 리스트로 변환.
+    한글 폰트를 사용하므로 맑은 고딕/코드 등 모든 특수문자가 정상 출력.
+    한글 폰트에 없는 문자는 _safe_code()에서 ASCII로 대체.
+    """
+    result = []
+    for line in _safe_code(text).splitlines():
+        escaped = _safe(line) if line.strip() else "\u00a0"
+        result.append(Paragraph(
+            f'<font face="Courier">{escaped}</font>',
+            style,
+        ))
+    return result
+
+
+# ── HTML → Flowable 변환 ─────────────────────────────────────────────────
 def _node_to_flowables(node, styles: dict, story: list) -> None:
     if isinstance(node, NavigableString):
         text = str(node).strip()
@@ -167,13 +231,11 @@ def _node_to_flowables(node, styles: dict, story: list) -> None:
             story.append(Paragraph(_safe(text), styles["body"]))
 
     elif tag in ("pre", "code"):
-        for line in node.get_text().splitlines():
-            story.append(Preformatted(line, styles["code"]))
+        story.extend(_code_lines(node.get_text(), styles["code"]))
 
     elif tag == "table":
         if is_code_table(node):
-            for line in extract_code_lines(node).splitlines():
-                story.append(Preformatted(line, styles["code"]))
+            story.extend(_code_lines(extract_code_lines(node), styles["code"]))
         else:
             tbl = _table_flowable(node, styles)
             if tbl:
