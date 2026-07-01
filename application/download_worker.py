@@ -20,10 +20,10 @@ class DownloadWorker(QThread):
         output_dir: str,
     ) -> None:
         super().__init__()
-        self._use_case        = use_case
-        self._url             = url
+        self._use_case         = use_case
+        self._url              = url
         self._include_children = include_children
-        self._output_dir      = output_dir
+        self._output_dir       = output_dir
 
     def run(self) -> None:
         try:
@@ -31,8 +31,8 @@ class DownloadWorker(QThread):
                 url=self._url,
                 include_children=self._include_children,
                 output_dir=self._output_dir,
-                progress_cb=lambda p: self.progress.emit(p),
-                log_cb=lambda m: self.log.emit(m),
+                progress_cb=self.progress.emit,
+                log_cb=self.log.emit,
             )
             self.finished.emit(path)
         except Exception as exc:
