@@ -233,12 +233,11 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "입력 오류",
                                 "URL은 http:// 또는 https://로 시작해야 합니다.")
             return
-        output_dir = self.le_out.text().strip() or self._vm.default_output_dir()
         self._vm.start_convert(
             url=url,
             include_children=self.chk_children.isChecked(),
             fmt_index=self.cb_format.currentIndex(),
-            output_dir=output_dir,
+            output_dir=self.le_out.text(),
         )
 
     def _append_log(self, msg: str) -> None:
