@@ -94,6 +94,9 @@ class MainViewModel(QObject):
         if self._running:
             return
 
+        # 빈 문자열이면 기본 경로로 대체 — View는 빈 문자열만 전달해도 된다
+        output_dir = output_dir.strip() or self.default_output_dir()
+
         new_settings = {
             "fmt_index":        fmt_index,
             "include_children": include_children,
