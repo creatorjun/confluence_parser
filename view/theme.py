@@ -1,4 +1,4 @@
-"""라이트 테마 팔레트 상수 및 전역 QSS."""
+# view/theme.py
 from __future__ import annotations
 
 BG         = "#F7F8FA"
@@ -17,7 +17,7 @@ TEXT_HINT  = "#9CA3AF"
 SUCCESS    = "#059669"
 ERROR      = "#DC2626"
 WARN       = "#D97706"
-LOG_BG     = "#FAFBFC"
+LOG_BG     = BG
 HDR_BG     = "#FFFFFF"
 STATUS_BG  = "#F0F2F5"
 
@@ -183,7 +183,7 @@ QCheckBox::indicator:hover  {{ border-color: {BORDER_FOC}; }}
 QCheckBox::indicator:checked {{ background: {ACCENT}; border-color: {ACCENT}; image: none; }}
 QCheckBox:disabled {{ color: {TEXT_HINT}; }}
 QTextEdit {{
-    background: {LOG_BG};
+    background: {BG};
     border: 1.5px solid {BORDER};
     border-radius: 7px;
     padding: 8px 10px;

@@ -1,4 +1,4 @@
-"""View — 메인 윈도우."""
+# view/main_window.py
 from __future__ import annotations
 
 from pathlib import Path
@@ -22,7 +22,7 @@ from view.settings_dialog import SettingsDialog
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Seculayer Document Parser")
+        self.setWindowTitle("Seculayer Document Downloader")
         self.setWindowIcon(app_icon())
         self.setMinimumSize(800, 640)
         self.resize(940, 720)
@@ -32,7 +32,6 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._refresh_credentials(self._vm.has_credentials)
 
-    # ── ViewModel 바인딩 ─────────────────────────────
     def _bind_viewmodel(self) -> None:
         vm = self._vm
         vm.log_appended.connect(self._append_log)
@@ -42,7 +41,6 @@ class MainWindow(QMainWindow):
         vm.convert_error.connect(self._on_error)
         vm.credentials_changed.connect(self._refresh_credentials)
 
-    # ── UI 구성 ───────────────────────────────────
     def _build_ui(self) -> None:
         root = QWidget()
         self.setCentralWidget(root)
@@ -74,15 +72,14 @@ class MainWindow(QMainWindow):
             f"background:{HDR_BG}; border-bottom:1px solid {BORDER};"
         )
         layout = QHBoxLayout(panel)
-        # 상하 12px 마진: 버튼 하단 보더가 패널에 밀려 클리핑되지 않도록
         layout.setContentsMargins(24, 12, 20, 12)
         layout.setSpacing(6)
 
         logo_row = QHBoxLayout()
         logo_row.setSpacing(4)
-        l1 = QLabel("Confluence")
+        l1 = QLabel("Seculayer Document")
         l1.setObjectName("lbl_title")
-        l2 = QLabel("Parser")
+        l2 = QLabel("Downloader")
         l2.setObjectName("lbl_title_accent")
         logo_row.addWidget(l1)
         logo_row.addWidget(l2)
@@ -202,7 +199,6 @@ class MainWindow(QMainWindow):
 
         return grp
 
-    # ── 유틸 ─────────────────────────────────────
     def _cap_label(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setStyleSheet(
@@ -211,7 +207,6 @@ class MainWindow(QMainWindow):
         )
         return lbl
 
-    # ── View 이벤트 → ViewModel 커맨드 ──────────────
     def _open_settings(self) -> None:
         dlg = SettingsDialog(self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
@@ -257,7 +252,6 @@ class MainWindow(QMainWindow):
             output_path=self.le_out.text().strip(),
         )
 
-    # ── ViewModel 시그널 핸들러 ───────────────────
     def _append_log(self, msg: str) -> None:
         self.te_log.append(msg)
         sb = self.te_log.verticalScrollBar()
