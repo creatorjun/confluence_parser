@@ -197,6 +197,7 @@ class MainWindow(QMainWindow):
         self.te_log = QTextEdit()
         self.te_log.setReadOnly(True)
         self.te_log.setMinimumHeight(190)
+        self.te_log.setStyleSheet("border: none;")
         layout.addWidget(self.te_log)
 
         return grp

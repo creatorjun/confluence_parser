@@ -783,8 +783,8 @@ def main():
 
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
-    app.setApplicationName("Confluence Parser")
-    app.setOrganizationName("confluence-parser")
+    app.setApplicationName("Confluence Downloader")
+    app.setOrganizationName("Seculayer")
     app.setWindowIcon(_app_icon())
 
     win = MainWindow()
