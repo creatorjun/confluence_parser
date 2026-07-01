@@ -13,7 +13,7 @@ except Exception:
 
 from PyQt6.QtWidgets import QApplication
 
-from infrastructure.credential_store import EnvCredentialStore
+from infrastructure.credential_store import SecureCredentialStore
 from infrastructure.confluence_repository import ConfluenceRepository
 from infrastructure.converters.md_converter import MdConverter
 from infrastructure.converters.docx_converter import DocxConverter
@@ -31,7 +31,7 @@ def main() -> None:
     app.setOrganizationName("Seculayer")
     app.setStyleSheet(QSS)
 
-    cred_store = EnvCredentialStore()
+    cred_store = SecureCredentialStore()
     email, token = cred_store.load()
     repo = ConfluenceRepository(email, token)
 
