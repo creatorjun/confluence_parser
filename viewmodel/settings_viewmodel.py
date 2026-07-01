@@ -10,18 +10,16 @@ from PyQt6.QtCore import QObject, pyqtSignal
 from platformdirs import user_config_dir
 
 from domain.ports import ICredentialStore
-
-_APP_NAME   = "SeculayerDocumentParser"
-_APP_AUTHOR = "Seculayer"
+from infrastructure.constants import APP_NAME, APP_AUTHOR
 
 # 이메일 기본 패턴: RFC 5322 완전 준수 대신 실용적 검증
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def _sanitize(value: str) -> str:
-    """줄바꾸과 탭을 제거하고 양쪽 공백을 제거.
+    """줄바꿼과 탭을 제거하고 양쪽 공백을 제거.
 
-    .env KEY=VALUE 포맷에서 줄바꾸이 포함되면 파일이 깨진다.
+    .env KEY=VALUE 포맷에서 줄바꿼이 포함되면 파일이 깨진다.
     """
     return value.replace("\r", "").replace("\n", "").replace("\t", " ").strip()
 
@@ -45,15 +43,14 @@ def _validate_token(token: str) -> str | None:
         return "API Token이 너무 짧습니다. (8자 이상)"
     if len(token) > 2048:
         return "API Token이 너무 깁니다. (2048자 이하)"
-    # .env 포맷 위활: 줄바꾸이 포함 시 (sanitize 이후에도 남아있으면 거부)
     if "\n" in token or "\r" in token:
-        return "Token에 줄바꾸이 포함되어 있어 저장할 수 없습니다."
+        return "Token에 줄바꿼이 포함되어 있어 저장할 수 없습니다."
     return None
 
 
 class SettingsViewModel(QObject):
     saved             = pyqtSignal()
-    validation_failed = pyqtSignal(str)  # 오류 메시지
+    validation_failed = pyqtSignal(str)
 
     def __init__(
         self,
@@ -63,7 +60,7 @@ class SettingsViewModel(QObject):
         super().__init__(parent)
         self._cred_store = credential_store
 
-    # ── 프로퍼티 ──────────────────────────────────────────────────────────
+    # ── 프로퍼티 ───────────────────────────────────────────────────────────────
     @property
     def current_email(self) -> str:
         email, _ = self._cred_store.load()
@@ -76,25 +73,21 @@ class SettingsViewModel(QObject):
 
     @property
     def config_dir(self) -> str:
-        return user_config_dir(_APP_NAME, _APP_AUTHOR)
+        return user_config_dir(APP_NAME, APP_AUTHOR)
 
-    # ── 액션 ──────────────────────────────────────────────────────────
+    # ── 액션 ───────────────────────────────────────────────────────────────
     def save(self, email: str, token: str) -> None:
-        # 1단계: sanitize — 줄바꾸 / 탭 / 양쪽 공백 제거
         email = _sanitize(email)
         token = _sanitize(token)
 
-        # 2단계: 이메일 검증
         if err := _validate_email(email):
             self.validation_failed.emit(err)
             return
 
-        # 3단계: 토큰 검증
         if err := _validate_token(token):
             self.validation_failed.emit(err)
             return
 
-        # 4단계: 저장
         self._cred_store.save(email, token)
         self.saved.emit()
 
